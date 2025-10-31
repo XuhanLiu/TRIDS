@@ -2,7 +2,7 @@ TriDS Release Notes
 ============
 #### TriDS: AI-native molecular docking framework unified with binding site identification, conformational sampling and scoring
 
-By Xuhan Liu & Hong Zhang, on Octobor 28th 2025
+By Xuhan Liu & Hong Zhang, on Octobor 26th 2025
 
 Please see the LICENSE file for the license terms for the software. Basically it's free to academic users. If you do wish to sell the software or use it in a commercial product, then please contact us:
 
@@ -43,13 +43,17 @@ To run the compiled **TriDS**, some dependent packages need to be installed. If 
       $ wget http://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-2.7.1%2Bcu118.zip
       
       $ unzip libtorch-cxx11-abi-shared-with-deps-2.7.1+cu118.zip
+
       $ mv libtorch ~/
 
-Note
------- 
+#### Note
+----------
+
 1. The compiled program "trids" is in the ./bin file.
 
-2. If meet any error like "error while loading shared libraries: cannot open shared object file: No such file or directory" when you run the compiled "trids", please run **locate** to find the related libfile path. And then add the related path to the **LD_LIBRARY_PATH**.
+2. The version of LibTorch should be consistent with the version of CUDA-ToolKit (Default: 11.8).
+
+3. If meet any error like "error while loading shared libraries: cannot open shared object file: No such file or directory" when you run the compiled "trids", please run **locate** to find the related libfile path. And then add the related path to the **LD_LIBRARY_PATH**.
 
  
 
@@ -57,7 +61,7 @@ Note
 --------
 #### Command line: 
 
-    $ trids -r receptor_path -l ligand_path -k refrence_ligand_path [OPTIONS]**
+    $ trids -r receptor_path -l ligand_path -k refrence_ligand_path [OPTIONS]
 
 #### Options:
 
