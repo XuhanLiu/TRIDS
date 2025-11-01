@@ -49,11 +49,13 @@ To run the compiled **TriDS**, some dependent packages need to be installed. If 
 #### Note
 ----------
 
-1. The compiled program "trids" is in the ./bin file.
+1. This grogram should be ran at **Linux** system. Make sure that your Operater system had better to be at least **Ubuntu 20.04**.
 
-2. The version of LibTorch should be consistent with the version of CUDA-ToolKit (Default: 11.8).
+2. The compiled program "trids" is in the ./bin file.
 
-3. If meet any error like "error while loading shared libraries: cannot open shared object file: No such file or directory" when you run the compiled "trids", please run **locate** to find the related libfile path. And then add the related path to the **LD_LIBRARY_PATH**.
+3. The version of LibTorch should be consistent with the version of CUDA-ToolKit (Default: 11.8).
+
+4. If meet any error like "error while loading shared libraries: cannot open shared object file: No such file or directory" when you run the compiled "trids", please run **locate** to find the related libfile path. And then add the related path to the **LD_LIBRARY_PATH**.
 
  
 
