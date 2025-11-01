@@ -49,7 +49,7 @@ To run the compiled **TriDS**, some dependent packages need to be installed. If 
 #### Note
 ----------
 
-1. This grogram should be ran at **Linux** system. Make sure that your Operater system had better to be at least **Ubuntu 20.04**.
+1. This grogram should be ran at **Linux** system. Make sure that your operater system had better to be at least **Ubuntu 20.04**.
 
 2. The compiled program "trids" is in the ./bin file.
 
