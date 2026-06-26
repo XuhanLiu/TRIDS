@@ -2,7 +2,7 @@ TRIDS Release Notes
 ============
 #### TRIDS: AI-native molecular docking framework unified with binding site identification, conformational sampling and scoring
 
-By Xuhan Liu & Hong Zhang, on JUN 19th 2026
+By Xuhan Liu & Hong Zhang, on JUN 26th 2026
 
 Please see the LICENSE file for the license terms for the software. Basically it's free to academic users. If you do wish to sell the software or use it in a commercial product, then please contact us:
 
