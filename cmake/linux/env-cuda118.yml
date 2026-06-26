@@ -1,0 +1,25 @@
+name: trids
+channels:
+  - nvidia/label/cuda-11.8.0
+  - conda-forge
+
+# Note: The version of PyTorch must be compatible with CUDA
+# Here all of code are compiled with CUDA-11.8
+dependencies:
+  - python=3.12
+  - cmake=3.22
+  - cuda=11.8.0
+  - cudnn=8.9.7
+  - openbabel=3.1.1
+  - numpy=2.3
+  - pybind11=2.13
+  - spdlog=1.16.0
+  - cli11=2.1.2
+  - pip
+  - pip:
+    - --extra-index-url https://download.pytorch.org/whl/cu118
+    - torch==2.7.1
+  
+  # If default verion of gcc >= 12, try to install it manually
+  # - gcc_linux-64=11.2
+  # - gxx_linux-64=11.2

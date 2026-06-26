@@ -1,0 +1,47 @@
+@PACKAGE_INIT@
+
+set(TRIDS_VERSION "@TRIDS_VERSION@")
+
+# Get the installation prefix from this file's location
+get_filename_component(TRIDS_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(TRIDS_PREFIX "${TRIDS_CMAKE_DIR}/../../.." ABSOLUTE)
+
+# Set directories
+set(TRIDS_INCLUDE_DIRS "${TRIDS_PREFIX}/include/trids")
+set(TRIDS_LIBRARY_DIRS "${TRIDS_PREFIX}/lib/trids@TRIDS_VERSION@")
+set(TRIDS_MODEL_DIR "${TRIDS_PREFIX}/lib/trids@TRIDS_VERSION@")
+
+# Find the library
+find_library(TRIDS_LIBRARY
+    NAMES trids libtrids
+    PATHS "${TRIDS_LIBRARY_DIRS}"
+    NO_DEFAULT_PATH
+)
+
+if(TRIDS_LIBRARY)
+    set(TRIDS_LIBRARIES ${TRIDS_LIBRARY})
+    set(TRIDS_FOUND TRUE)
+else()
+    set(TRIDS_FOUND FALSE)
+    if(trids_FIND_REQUIRED)
+        message(FATAL_ERROR "Could not find TRIDS library in ${TRIDS_LIBRARY_DIRS}")
+    endif()
+endif()
+
+# Create imported target
+if(TRIDS_FOUND AND NOT TARGET trids::trids)
+    add_library(trids::trids SHARED IMPORTED)
+    set_target_properties(trids::trids PROPERTIES
+        IMPORTED_LOCATION "${TRIDS_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${TRIDS_INCLUDE_DIRS}"
+    )
+endif()
+
+# Print status message
+if(TRIDS_FOUND)
+    if(NOT trids_FIND_QUIETLY)
+        message(STATUS "Found TRIDS: ${TRIDS_LIBRARY} (version ${TRIDS_VERSION})")
+        message(STATUS "  Include dirs: ${TRIDS_INCLUDE_DIRS}")
+        message(STATUS "  Model dir: ${TRIDS_MODEL_DIR}")
+    endif()
+endif()

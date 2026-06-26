@@ -1,0 +1,108 @@
+[build-system]
+requires = [
+    "setuptools>=77",
+    "wheel",
+    "ninja",
+    "torch>=2.7",
+    "openbabel>=3.0.0",
+    "spdlog>=1.0.0",
+    "pybind11>=2.10",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trids"
+version = "1.0.0"
+description = "Deep Learning-based Molecular Docking Framework"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Dr. Xuhan Liu", email = "xuhanliu@qq.com"},
+]
+maintainers = [
+    {name = "Dr. Xuhan Liu", email = "xuhanliu@qq.com"},
+]
+keywords = [
+    "molecular-docking",
+    "drug-discovery",
+    "deep-learning",
+    "pytorch",
+    "cuda",
+    "computational-chemistry",
+    "bioinformatics",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.7",
+    "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "isort",
+    "mypy",
+    "flake8",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
+
+[project.urls]
+Homepage = "https://github.com/xuhanliu/trids"
+Documentation = "https://trids.readthedocs.io"
+Repository = "https://github.com/xuhanliu/trids"
+Issues = "https://github.com/xuhanliu/trids/issues"
+
+[tool.setuptools]
+packages = ["trids"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312", "py313"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.mypy_cache
+    | \.pytest_cache
+    | build
+    | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+
