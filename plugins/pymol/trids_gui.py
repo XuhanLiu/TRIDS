@@ -468,12 +468,12 @@ def _get_trinfo_text() -> str:
         lines.append("Usage (PyMOL command line):\n")
         lines.append("    # set or show compute device\n")
         lines.append("    device [dtype [, num]]\n")
+        lines.append("    # predict pockets in a receptor\n")
+        lines.append("    trisite receptor [, reference [, options...]]\n")
         lines.append("    # dock a ligand into a trisite pocket\n")
         lines.append("    trids pocket, ligand [, options...]\n")
         lines.append("    # score a ligand pose in a trisite pocket\n")
         lines.append("    triscore pocket, ligand [, options...]\n")
-        lines.append("    # predict pockets in a receptor\n")
-        lines.append("    trisite receptor [, reference [, options...]]\n")
         lines.append("    # show TRIDS info\n")
         lines.append("    trinfo\n")
         lines.append("\n")
@@ -874,8 +874,7 @@ DESCRIPTION
 
 Usage:
 
-    trids pocket, ligand [, top_n [, streams
-         [, depth [, use_vina [, name ]]]]]]
+    trids pocket, ligand [, top_n [, streams [, depth [, use_vina [, name ]]]]]
 
 Options:
 
