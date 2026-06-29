@@ -56,7 +56,7 @@ def main() -> int:
                 print(f"[FAIL] Binding Site submenu must be a list, got {type(binding_menu)}")
                 return 1
             binding_labels = [entry[1] for entry in binding_menu if entry[0] == 1]
-            if binding_labels[0] != "auto":
+            if binding_labels[0] != "prediction":
                 print(f"[FAIL] Binding Site submenu must start with auto, got {binding_labels}")
                 return 1
             continue
@@ -95,7 +95,7 @@ def main() -> int:
     if ligand.is_file():
         print("\n=== Running triscore with trisite pocket ===")
         cmd.load(str(ligand), "ligand")
-        cmd.do("triscore pkt_pred_0, ligand")
+        cmd.do("triscore site_pred_0, ligand")
         print("[PASS] triscore executed")
 
     print("\n=== All PyMOL plugin smoke tests passed ===")

@@ -19,6 +19,7 @@ dependencies:
   # - cuda=12.6
   # - ninja
   # - vs2022-win_64
+  # - zlib
   - pip
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/cu126
