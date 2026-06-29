@@ -879,7 +879,7 @@ Usage:
 Options:
 
     pocket      = str: trisite pocket object (site_ref_* or site_pred_*)
-    ligand      = str: PyMOL selection or file path (sdf/mol2/pdb) for the ligand
+    ligand      = str: PyMOL selection as the ligand
     top_n       = int: number of top conformations to return (default: 8)
     streams     = int: number of parallel sampling tasks (default: 1024)
     depth       = int: Monte Carlo search depth (default: 8)
@@ -958,7 +958,7 @@ Usage:
 Options:
 
     pocket        = str: trisite pocket object (site_ref_* or site_pred_*)
-    ligand        = str: PyMOL selection or file path
+    ligand        = str: PyMOL selection as the ligand
     use_vina      = 0/1: use Vina scoring (default: 0)
 
 Examples:
@@ -1210,8 +1210,8 @@ Usage:
 
 Options:
 
-    receptor  = str: PyMOL selection or PDB file path
-    reference = str: (optional) reference ligand selection or file path
+    receptor  = str: PyMOL selection as the receptor
+    reference = str: (optional) PyMOL selection as the reference ligand
     cutoff    = float: pocket radius in Angstrom (default: 8.0)
     show      = 0/1: auto-visualize pockets in PyMOL (default: 1)
 
