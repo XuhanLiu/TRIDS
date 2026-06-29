@@ -171,7 +171,7 @@ trids_implib_from_dll("${TRIDS_IOMP5_DLL}" trids_iomp5md TRIDS_IOMP5_LIB)
 find_path(TRIDS_OMP_INCLUDE NAMES omp.h HINTS "${TRIDS_CONDA}/Library/include" REQUIRED)
 message(STATUS "Intel OpenMP: ${TRIDS_IOMP5_DLL} -> ${TRIDS_IOMP5_LIB}")
 
-set(TRIDS_OPENMP_FLAG "/openmp:llvm")
+set(TRIDS_OPENMP_FLAG "/openmp")
 add_library(trids::openmp INTERFACE IMPORTED GLOBAL)
 target_include_directories(trids::openmp INTERFACE "${TRIDS_OMP_INCLUDE}")
 target_compile_options(trids::openmp INTERFACE
