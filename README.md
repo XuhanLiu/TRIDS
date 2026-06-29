@@ -209,9 +209,9 @@ Options:
   
     -l,--ligand <smi, mol2, sdf, pdb>     Ligand [REQUIRED]
   
-    -k,--pocket <pt, pth, mol2, sdf, pdb> Reference profile for Binding site identification! 
+    -k,--pocket <pt, pth, mol2, sdf, pdb> Reference profile for Binding site identification
   
-    --hts                                 High throughput screening mode with higher virtual screening accuracy but lower binding pose accuracy.
+    --hts                                 High throughput screening mode with higher virtual screening accuracy but lower binding pose accuracy
   
     -o,--out <string>                     File path for outputing docking results, the format of molecules is based on file extension
   
