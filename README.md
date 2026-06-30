@@ -42,15 +42,15 @@ To run the compiled **TRIDS**, some dependent packages need to be installed. You
 
 For **Linux**:
 
-      $ conda env create -f cmake/linux/env-126.yml (CUDA 12.6)
+      $ conda env create -f cmake/linux/env-126.yml               # CUDA 12.6
 
 or 
 
-      $ conda env create -f cmake/linux/env-118.yml (CUDA 11.8)
+      $ conda env create -f cmake/linux/env-118.yml               # CUDA 11.8
 
 For **Windows**:
 
-      $ conda env create -f cmake/windows/environment.yml (CUDA 12.6)
+      $ conda env create -f cmake/windows/environment.yml         # CUDA 12.6
 
 After installation, activate the Conda environment **trids**:
 

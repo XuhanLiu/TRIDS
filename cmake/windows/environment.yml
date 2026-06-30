@@ -5,15 +5,16 @@ channels:
   - nvidia
   - conda-forge
 
+# Note: The version of PyTorch must be compatible with CUDA
 # Here all of code are compiled with CUDA-12.6
 dependencies:
   - python=3.12
   - openbabel=3.1.1
   - pybind11=2.13
   - spdlog=1.16.0
-  - cli11=2.1.2 
+  - cli11=2.1.2
   # If you want to compile this project on Windows, followig packages should be installed, 
-  # and The version of PyTorch must be compatible with CUDA
+  # and the version of PyTorch must be compatible with CUDA
   # - cmake=3.28
   # - cuda=12.6
   # - ninja
@@ -24,5 +25,5 @@ dependencies:
     - --extra-index-url https://download.pytorch.org/whl/cu126
     - torch==2.7.1
     - numpy>=2.3
-    - nvidia-nvtx-cu12=12.6
-    - nvidia-cudnn-cu12=12.6
+    - nvidia-nvtx-cu12
+    - nvidia-cudnn-cu12
