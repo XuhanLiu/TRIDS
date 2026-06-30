@@ -48,7 +48,7 @@ or
 
       $ conda env create -f cmake/linux/env-118.yml (CUDA 11.8)
 
-For **windows**:
+For **Windows**:
 
       $ conda env create -f cmake/windows/environment.yml (CUDA 12.6)
 
@@ -183,9 +183,9 @@ First of all, make sure that **PyTrids** and **PyMOL** has been installed in the
 **Method 2**: (Manual)
 Copy trids_gui.py into the startup folder of PyMOL:
   
-      $ cp plugins/pymol/trids_gui.py ~/.pymol/startup/                               (For Linux / MacOS)
+      $ cp plugins/pymol/trids_gui.py ~/.pymol/startup/                               (on Linux)
 
-      > copy plugins/pymol/trids_gui.py C:\Users\<Username>\.pymol\startup\           (Windows)
+      > copy plugins/pymol/trids_gui.py C:\Users\<Username>\.pymol\startup\           (on Windows)
 
 **Method 3**: (Temporary) 
 Run the following code in the command line of PyMOL
