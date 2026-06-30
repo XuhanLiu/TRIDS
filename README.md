@@ -42,11 +42,11 @@ To run the compiled **TRIDS**, some dependent packages need to be installed. You
 
 For **Linux**:
 
-      $ conda env create -f cmake/linux/env-126.yml               # CUDA 12.6
+      $ conda env create -f cmake/linux/env-cu126.yml             # CUDA 12.6
 
 or 
 
-      $ conda env create -f cmake/linux/env-118.yml               # CUDA 11.8
+      $ conda env create -f cmake/linux/env-cu118.yml             # CUDA 11.8
 
 For **Windows**:
 
@@ -68,7 +68,7 @@ After installation, activate the Conda environment **trids**:
 
 or
 
-      $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu1118    # CUDA 11.8
+      $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu118    # CUDA 11.8
 
 #### 1.2. [OpenBabel](https://openbabel.org) (version >= 3.1.1)
 
