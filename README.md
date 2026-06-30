@@ -135,7 +135,7 @@ or
       > cmake/windows/build.bat
 
 **Note:**
-* Make sure that you have already installed **Microsoft Visual C++ Build Tools**. If its version >= 2022, you should also install the following package:
+* Make sure that **Microsoft Visual C++ Build Tools** has been installed. If its version >= 2022, you should also install the following package:
   
       > conda install vs2022-win_64 -c conda-forge
 
