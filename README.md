@@ -86,7 +86,7 @@ or
 
       $ conda install pybind11==2.11 -c conda-forge
 
-**Note**: Pybind11 is required only when you want to install **Python** version
+**Note**: Pybind11 is required only when you want to install **PyTrids** for Python.
 
 #### 1.6 [PyMOL](https://www.pymol.org/) (version >= 2.5, Optional)
 
