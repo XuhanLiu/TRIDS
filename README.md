@@ -199,8 +199,8 @@ Run the following code in the command line of PyMOL
 
 Optionally, also check **PyTrids** if installed:
 
-      $ python tests/test_trids.py -g 0 (CUDA)
-      $ python tests/test_trids.py -g -1 (CPU)
+      $ python tests/test_trids.py -g 0               (CUDA)
+      $ python tests/test_trids.py -g -1              (CPU)
 
 **Note:** 
 * If you could run **trids** from terminal, it has been installed successfully.
