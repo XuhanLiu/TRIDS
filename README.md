@@ -162,11 +162,9 @@ or
 
 * Generally, the library and execution file have be precompiled in **bin/**. If compatibility issues occurs, delete the folder **bin/** before reinstallation.
 
-      > rmdir /s /q bin/                  (on Windows)
-
-or 
-
       $ rm -rf bin/                       (on Linux)
+
+      > rmdir /s /q bin/                  (on Windows)
 
 * If **llvm-openmp** has been installed in this **Conda** environment, the openmp library loading will clash on **Windows**. Therefore, you have to either uninstall this package manually, or set the following environmental variable.
 
@@ -187,9 +185,7 @@ Copy trids_gui.py into the startup folder of PyMOL:
   
       $ cp plugins/pymol/trids_gui.py ~/.pymol/startup/                               (For Linux / MacOS)
 
-or
-
-      $ copy plugins/pymol/trids_gui.py C:\Users\<Username>\.pymol\startup\           (Windows)
+      > copy plugins/pymol/trids_gui.py C:\Users\<Username>\.pymol\startup\           (Windows)
 
 **Method 3**: (Temporary) 
 Run the following code in the command line of PyMOL
