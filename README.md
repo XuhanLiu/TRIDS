@@ -64,13 +64,11 @@ After installation, activate the Conda environment **trids**:
 #### The following packages are required at runtime: 
 #### 1.1. [PyTorch](https://www.pytorch.org) (version >= 2.6)
 
-For CUDA 11.8:
+      $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu126           # CUDA 12.6
 
-      $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+or
 
-For CUDA 12.6:
-
-      $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu1126
+      $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu1118          # CUDA 11.8
 
 #### 1.2. [OpenBabel](https://openbabel.org) (version >= 3.1.1)
 
