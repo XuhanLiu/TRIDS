@@ -7,18 +7,20 @@ channels:
 # Here all of code are compiled with CUDA-11.8
 dependencies:
   - python=3.12
-  - cmake=3.22
-  - cuda=11.8.0
   - cudnn=8.9.7
   - openbabel=3.1.1
-  - numpy=2.3
   - pybind11=2.13
   - spdlog=1.16.0
   - cli11=2.1.2
+  # If you want to compile this project on local machine, followig packages should be installed, 
+  # and the version of PyTorch must be compatible with CUDA
+  # - cmake=3.22
+  # - cuda=11.8
   - pip
   - pip:
     - --extra-index-url https://download.pytorch.org/whl/cu118
     - torch==2.7.1
+    - numpy>=2.3
   
   # If default verion of gcc >= 12, try to install it manually
   # - gcc_linux-64=11.2
