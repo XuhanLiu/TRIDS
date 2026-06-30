@@ -92,7 +92,7 @@ or
 
       $ conda install pymol-open-source -c conda-forge
 
-**Note**: If you want to use PyMOL plugins, make sure that PyMOL and TRIDS has been installed in the same Conda environment.
+**Note**: If you want to use PyMOL plugins, make sure that PyMOL and TRIDS have been installed in the same Conda environment.
 
 #### The following packages are also required if this project is recompiled manually:
 #### 1.7. [cmake](https://cmake.org) (version >= 3.18, < 4.0)
@@ -149,9 +149,11 @@ or
 
 ### 4. Install **PyTrids** for Python
 
-      $ mkdir build
-
       $ python setup.py install
+
+or 
+
+      $ pip install -e . --no-build-isolation
 
 **Note:**
 * If you want to uninstall this package, run:
