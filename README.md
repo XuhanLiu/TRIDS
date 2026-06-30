@@ -2,7 +2,7 @@ TRIDS Release Notes
 ============
 #### TRIDS: AI-native molecular docking framework unified with binding site identification, conformational sampling and scoring
 
-By Xuhan Liu & Hong Zhang, on JUN 19th 2026
+By Xuhan Liu & Hong Zhang, on JUN 26th 2026
 
 Please see the LICENSE file for the license terms for the software. Basically it's free to academic users. If you do wish to sell the software or use it in a commercial product, then please contact us:
 
@@ -36,7 +36,7 @@ The sampling space is defined on the degrees of freedom for each molecule, inclu
 ![Fig. 2: Monte Carlo with gradient descent approach for conformational sampling](docs/trids_2.png)
 
 ## Installation
-To run the compiled **TRIDS**, some dependent packages need to be installed. If you are not the **root** user, you could create an virtual environment with **Conda**, the instruction are as follows: 
+To run the compiled **TRIDS**, some dependent packages need to be installed. You could create an new **Conda** environment with these required packages: 
 
 ### 1. Create a new Conda environment named "trids" 
 
@@ -60,16 +60,9 @@ After installation, activate the Conda environment **trids**:
 * After this environment is created, all of required packages will be installed automatically.
 * Make sure all of the dependencies have been installed. otherwise, you have to install them manually.
 * If your CUDA version is 11.8, and default version of GCC  >= 12, you have to install another GCC (version: 11.2) with Conda
-   
-#### 1.1. [Nvidia CUDA](https://developer.nvidia.com/cuda) (version >= 11.8)
 
-      $ conda install cuda==11.8.0 -c nvidia/label/cuda-11.8.0
-
-or 
-
-      $ conda install cuda==12.6.0 -c nvidia/label/cuda-12.6.0
-
-#### 1.2. [PyTorch](https://www.pytorch.org) (version >= 2.6)
+#### The following packages are required at runtime: 
+#### 1.1. [PyTorch](https://www.pytorch.org) (version >= 2.6)
 
 For CUDA 11.8:
 
@@ -79,37 +72,45 @@ For CUDA 12.6:
 
       $ pip install pytorch==2.7.1 --index-url https://download.pytorch.org/whl/cu1126
 
-**Note**: 
-* The version of PyTorch should be consistent with the version of CUDA. 
-* If customed version of CUDA and Pytorch are used, users could modify **CMakeLists.txt** and add the path of CUDA compiler and import these libraries.
-
-#### 1.3. [OpenBabel](https://openbabel.org) (version >= 3.1.1)
+#### 1.2. [OpenBabel](https://openbabel.org) (version >= 3.1.1)
 
       $ conda install openbabel==3.1.1 -c conda-forge
 
-#### 1.4. [cmake](https://cmake.org) (version >= 3.18, < 4.0)
-
-      $ conda install cmake==3.22 -c conda-forge
-
-#### 1.5. [CLI11](https://github.com/CLIUtils/CLI11) (version >= 2.0)
+#### 1.3. [CLI11](https://github.com/CLIUtils/CLI11) (version >= 2.0)
 
       $ conda install cli11==2.1.2
 
-#### 1.6. [spdlog](https://github.com/gabime/spdlog) (version >= 1.0)
+#### 1.4. [spdlog](https://github.com/gabime/spdlog) (version >= 1.0)
 
       # conda install spdlog==1.16.0
 
-#### 1.7. [pybind11](https://github.com/pybind/pybind11) (version >= 2.11, Optional)
+#### 1.5. [pybind11](https://github.com/pybind/pybind11) (version >= 2.11, Optional)
 
       $ conda install pybind11==2.11 -c conda-forge
 
 **Note**: Pybind11 is required only when you want to install **Python** version
 
-#### 1.8 [PyMOL](https://www.pymol.org/) (version >= 2.5, Optional)
+#### 1.6 [PyMOL](https://www.pymol.org/) (version >= 2.5, Optional)
 
       $ conda install pymol-open-source -c conda-forge
 
 **Note**: If you want to use PyMOL plugins, make sure that PyMOL and TRIDS has been installed in the same Conda environment.
+
+#### The following packages are also required if this project is recompiled manually:
+#### 1.7. [cmake](https://cmake.org) (version >= 3.18, < 4.0)
+
+      $ conda install cmake==3.22 -c conda-forge
+
+#### 1.8. [Nvidia CUDA](https://developer.nvidia.com/cuda) (version >= 11.8)
+
+      $ conda install cuda==11.8.0 -c nvidia/label/cuda-11.8.0
+
+or 
+
+      $ conda install cuda==12.6.0 -c nvidia/label/cuda-12.6.0
+
+**Note**: 
+* The version of PyTorch should be consistent with the version of CUDA. 
 
 #### 1.9. [GCC](https://gcc.gnu.org/) (version <= 11.2, Optional)
 
