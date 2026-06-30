@@ -43,11 +43,11 @@ Installation:
     Method 2: (Manual)
     Copy trids_pymol.py into the startup folder of PyMOL:
     
-        $ cp plugins/trids_pymol.py ~/.pymol/startup/                               (For Linux / MacOS)
+        $ cp plugins/trids_pymol.py ~/.pymol/startup/                               # on  Linux
 
     or
 
-        $ copy plugins/trids_pymol.py C:\\Users\\<Username>\\.pymol\\startup\\           (Windows)
+        $ copy plugins/trids_pymol.py C:\\Users\\<Username>\\.pymol\\startup\\           # on Windows
 
     Method 3: (Temporary) 
     Run the following code in the command line of PyMOL
@@ -56,9 +56,9 @@ Installation:
 
 Usage (PyMOL command line):
     device [dtype [, num]]       # set or show compute device
-    trids pocket_sel, ligand_sel [, options...]
-    triscore pocket_sel, ligand_sel [, options...]
-    trisite receptor_sel [, reference_sel [, options...]]
+    trids pocket, ligand [, options...]
+    triscore pocket, ligand [, options...]
+    trisite receptor [, reference [, options...]]
     trinfo
 
 Usage (object panel A menu):
