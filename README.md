@@ -162,9 +162,9 @@ or
 
 * Generally, the library and execution file have be precompiled in **bin/**. If compatibility issues occurs, delete the folder **bin/** before reinstallation.
 
-      $ rm -rf bin/                       (on Linux)
+      $ rm -rf bin/                       # on Linux
 
-      > rmdir /s /q bin/                  (on Windows)
+      > rmdir /s /q bin/                  # on Windows
 
 * If **llvm-openmp** has been installed in this **Conda** environment, the openmp library loading will clash on **Windows**. Therefore, you have to either uninstall this package manually, or set the following environmental variable.
 
@@ -183,9 +183,9 @@ First of all, make sure that **PyTrids** and **PyMOL** has been installed in the
 **Method 2**: (Manual)
 Copy trids_gui.py into the startup folder of PyMOL:
   
-      $ cp plugins/pymol/trids_gui.py ~/.pymol/startup/                               (on Linux)
+      $ cp plugins/pymol/trids_gui.py ~/.pymol/startup/                               # on Linux
 
-      > copy plugins/pymol/trids_gui.py C:\Users\<Username>\.pymol\startup\           (on Windows)
+      > copy plugins/pymol/trids_gui.py C:\Users\<Username>\.pymol\startup\           # on Windows
 
 **Method 3**: (Temporary) 
 Run the following code in the command line of PyMOL
@@ -199,8 +199,8 @@ Run the following code in the command line of PyMOL
 
 Optionally, also check **PyTrids** if installed:
 
-      $ python tests/test_trids.py -g 0               (CUDA)
-      $ python tests/test_trids.py -g -1              (CPU)
+      $ python tests/test_trids.py -g 0               # CUDA
+      $ python tests/test_trids.py -g -1              # CPU
 
 **Note:** 
 * If you could run **trids** from terminal, it has been installed successfully.
