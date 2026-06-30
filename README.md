@@ -143,7 +143,7 @@ or
   
       > conda install ninja
 
-* Add the **PATH** to environment variables:
+* If **trids** could not be ran normally, please check if adding **PATH** to environment variables:
 
       > set PATH=%CONDA_PREFIX%\Lib\site-packages\torch\lib;%CONDA_PREFIX%\Library\bin;%PATH%
 
