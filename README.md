@@ -1,6 +1,6 @@
 TRIDS Release Notes
 ============
-#### TRIDS: AI-native molecular docking framework unified with binding site identification, conformational sampling and scoring
+#### TRIDS: AI-native molecular docking framework unified with binding site identification, conformation sampling and scoring
 
 By Xuhan Liu & Hong Zhang, on JUN 26th 2026
 
@@ -13,12 +13,12 @@ Please see the LICENSE file for the license terms for the software. Basically it
 
 ## Introduction
 <p align=justify>
-Molecular docking is a cornerstone of drug discovery for unveiling the mechanism of ligand-receptor interactions. With the recent advances of deep learning (DL) in the field of artificial intelligence, innovative methods for molecular docking have achieved higher accuracy for binding pose prediction and virtual screening compared with classical physics-based methods. However, these DL-based methods not only consume huge computational resources, but also lack physics-based validity, which hinders their applicability to high-throughput virtual screening in reality. At present, there is a scarcity of approaches to strike a balance among accuracy, computational efficiency, and rigorous physical validity of the output conformations. In the first two versions of DSDP, we demonstrated the effectiveness of guiding conformational sampling with the gradient of an analytic scoring function. As the third version, TRIDS was devised as an AI-native docking framework that expand this sampling strategy to DL-based scoring model for unification of sampling and scoring processes. Furthermore, it is tailored for seamless cooperation of AI and physics to guarantee the physical validity of predicted binding poses. To be user-friendly, TRIDS is able to predict the binding site, parse multiple file formats, and supports Python programming and PyMOL graphical interaction. It has shown that our proposed method achieves excellent docking accuracy and passes physical validation with superior computational efficiency, i.e. a single docking task is done in sub-second while maintaining a highly lightweight GPU memory footprint of merely hundreds of megabytes. As a proof of concept, TRIDS has succeeded in obtaining hit compounds with novel scaffolds for tumor necrosis factor-alpha (TNFα) inhibitor through a large-scale virtual screening.
+Molecular docking is a cornerstone of drug discovery for unveiling the mechanism of ligand-receptor interactions. With the recent advances of deep learning (DL) in the field of artificial intelligence, innovative methods for molecular docking have achieved higher accuracy for binding pose prediction and virtual screening compared with classical physics-based methods. However, these DL-based methods not only consume huge computational resources, but also lack physics-based validity, which hinders their applicability to high-throughput virtual screening in reality. At present, there is a scarcity of approaches to strike a balance among accuracy, computational efficiency, and rigorous physical validity of the output conformations. In the first two versions of DSDP, we demonstrated the effectiveness of guiding conformation sampling with the gradient of an analytic scoring function. As the third version, TRIDS was devised as an AI-native docking framework that expand this sampling strategy to DL-based scoring model for unification of sampling and scoring processes. Furthermore, it is tailored for seamless cooperation of AI and physics to guarantee the physical validity of predicted binding poses. To be user-friendly, TRIDS is able to predict the binding site, parse multiple file formats, and supports Python programming and PyMOL graphical interaction. It has shown that our proposed method achieves excellent docking accuracy and passes physical validation with superior computational efficiency, i.e. a single docking task is done in sub-second while maintaining a highly lightweight GPU memory footprint of merely hundreds of megabytes. As a proof of concept, TRIDS has succeeded in obtaining hit compounds with novel scaffolds for tumor necrosis factor-alpha (TNFα) inhibitor through a large-scale virtual screening.
 </p>
 
 ## Architectures
 <p align=justify>
-TRIDS is implemented with PyTorch C++ (LibTorch). It combined multiple optimization of streams parallel computing，CUDA graph-operator merge, automatic differentiation, CUDA kernel function to accelerate the program dramatically. General speaking, any differentiable ML-based scoring function could be compatible with this framework for conformational sampling.
+TRIDS is implemented with PyTorch C++ (LibTorch). It combined multiple optimization of streams parallel computing，CUDA graph-operator merge, automatic differentiation, CUDA kernel function to accelerate the program dramatically. General speaking, any differentiable ML-based scoring function could be compatible with this framework for conformation sampling.
 </p>
 
 ### 1. Scorging Function 
@@ -28,12 +28,12 @@ The main SF in the present work is the mixture density network (MDN), which cons
 
 ![Fig. 1: Workflow of MDN-based scoring function](docs/trids_1.png)
 
-### 2. Conformational Sampling
+### 2. Conformation Sampling
 <p align=justify>
 The sampling space is defined on the degrees of freedom for each molecule, including translation, rotation and torsion angles of rotatable bonds, the ranges of which are [box_min, box_max], [-π, π) and [-π, π), respectively. In the beginning, each copy of conformation was initiated with randomization of the degrees of freedom involved. During the computational loop, one variable was randomly perturbed to update the conformation at first. Subsequently, the updated conformation was optimized through the gradient descent method. Adam with learning rate 0.1 was used to update the variables, in which the above-mentioned ML-based scoring model was differentiated to provide gradients. At the end of each loop, the perturbation was accepted according to Metropolis criterion.
 </p>
 
-![Fig. 2: Monte Carlo with gradient descent approach for conformational sampling](docs/trids_2.png)
+![Fig. 2: Monte Carlo with gradient descent approach for conformation sampling](docs/trids_2.png)
 
 ## Installation
 To run the compiled **TRIDS**, some dependent packages need to be installed. You could create an new **Conda** environment with these required packages: 
@@ -305,7 +305,7 @@ Options:
 
 
 ## References
-1. [Liu X, Bonghua Zhang, Hong Zhang, Yi Qin Gao. TRIDS: AI-native molecular docking framework unified with binding site identification, conformational sampling and scoring. (2025). preprint](https://arxiv.org/abs/2510.24186)
+1. [Liu X, Bonghua Zhang, Hong Zhang, Yi Qin Gao. TRIDS: AI-native molecular docking framework unified with binding site identification, conformation sampling and scoring. (2025). preprint](https://arxiv.org/abs/2510.24186)
 
 2. [Chengwei Dong, Yu-Peng Huang, Xiaohan Lin, Hong Zhang, and Yi Qin Gao. DSDPFlex: Flexible-Receptor Docking with GPU Acceleration. (2024) Journal of Chemical Information and Modeling](https://doi.org/10.1021/acs.jcim.4c01715)
 
