@@ -109,8 +109,7 @@ or
 
       $ conda install cuda==12.6.0 -c nvidia/label/cuda-12.6.0
 
-**Note**: 
-* The version of PyTorch should be consistent with the version of CUDA. 
+**Note**: The version of PyTorch should be consistent with the version of CUDA. 
 
 #### 1.9. [GCC](https://gcc.gnu.org/) (version <= 11.2, Optional)
 
