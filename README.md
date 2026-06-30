@@ -135,13 +135,13 @@ or
       > cmake/windows/build.bat
 
 **Note:**
-* Make sure that you have already installed **Microsoft Visual C++ Build Tools**
-
-* Make sure that you have already installed **Nvidia CUDA Toolkit**
+* Make sure that you have already installed **Microsoft Visual C++ Build Tools**. If its version >= 2022, you should also install the following package:
+  
+      > conda install vs2022-win_64 -c conda-forge
 
 * Compilation on Windows also depends on Ninja, so it should also be installed:
   
-      > conda install ninja
+      > conda install ninja -c conda-forge
 
 * If **trids** could not be ran normally, please check if adding **PATH** to environment variables:
 
