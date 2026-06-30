@@ -47,7 +47,7 @@ Installation:
 
     or
 
-        $ copy plugins/trids_pymol.py C:\\Users\\<Username>\\.pymol\\startup\\           # on Windows
+        $ copy plugins/trids_pymol.py C:\\Users\\<Username>\\.pymol\\startup\\      # on Windows
 
     Method 3: (Temporary) 
     Run the following code in the command line of PyMOL
