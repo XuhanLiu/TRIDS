@@ -13,7 +13,7 @@ Please see the LICENSE file for the license terms for the software. Basically it
 
 ## Introduction
 <p align=justify>
-Molecular docking is a cornerstone of drug discovery for unveiling the mechanism of ligand-receptor interactions. With the recent advances of deep learning (DL) in the field of artificial intelligence, innovative methods for molecular docking have achieved higher accuracy for binding pose prediction and virtual screening compared with classical physics-based methods. However, these DL-based methods not only consume huge computational resources, but also lack physics-based validity, which hinders their applicability to high-throughput virtual screening in reality. At present, there is a scarcity of approaches to strike a balance among accuracy, computational efficiency, and rigorous physical validity of the output conformations. In the first two versions of DSDP, we demonstrated the effectiveness of guiding conformation sampling with the gradient of an analytic scoring function. As the third version, TRIDS was devised as an AI-native docking framework that expand this sampling strategy to DL-based scoring model for unification of sampling and scoring processes. Furthermore, it is tailored for seamless cooperation of AI and physics to guarantee the physical validity of predicted binding poses. To be user-friendly, TRIDS is able to predict the binding site, parse multiple file formats, and supports Python programming and PyMOL graphical interaction. It has shown that our proposed method achieves excellent docking accuracy and passes physical validation with superior computational efficiency, i.e. a single docking task is done in sub-second while maintaining a highly lightweight GPU memory footprint of merely hundreds of megabytes. As a proof of concept, TRIDS has succeeded in obtaining hit compounds with novel scaffolds for tumor necrosis factor-alpha (TNFα) inhibitor through a large-scale virtual screening.
+Molecular docking is a cornerstone of drug discovery for unveiling the mechanism of ligand-receptor interactions. With the recent advances of deep learning (DL), AI-powered molecular docking methods have achieved higher accuracy for binding pose prediction and virtual screening compared with classical physics-based methods. However, there is still a scarcity of approaches to strike a balance among accuracy, computational efficiency, and rigorous physical validity of the output conformations. In the previous two versions of DSDP, we demonstrated the effectiveness of guiding conformation sampling with the gradient of an analytic scoring function. As the third version, TRIDS was devised as an AI-native docking framework that expand the similar strategy to unify conformation sampling and docking processes with DL-based model for improving accuracy of docking and screening. Furthermore, it is tailored for seamless cooperation of AI and physics to guarantee the physical validity of predicted binding poses. Being user-friendly, TRIDS predicts the binding site, parses multiple file formats, and supports Python programming and PyMOL graphical interaction. It improves docking accuracy and passes physical validation with high computational efficiency, i.e. a single docking task is done in a fraction of second while maintaining a highly lightweight GPU memory footprint of merely hundreds of megabytes, facilitating high-throughput virtual screening in reality. As a proof of concept, TRIDS allowed us to obtain hit compounds with novel scaffolds for tumor necrosis factor-alpha (TNFα) inhibitor through a large-scale virtual screening. 
 </p>
 
 ## Architectures
@@ -38,7 +38,7 @@ The sampling space is defined on the degrees of freedom for each molecule, inclu
 ## Installation
 To run the compiled **TRIDS**, some dependent packages need to be installed. You could create an new **Conda** environment with these required packages: 
 
-### 1. Create a new Conda environment named "trids" 
+### 1. Creation of a new Conda environment named **trids** 
 
 For **Linux**:
 
@@ -57,9 +57,9 @@ After installation, activate the Conda environment **trids**:
       $ conda activate trids
 
 **Note:** 
-* After this environment is created, all of required packages will be installed automatically.
+* After this environment is created, all of required packages at runtime will be installed automatically.
 * Make sure all of the dependencies have been installed. otherwise, you have to install them manually.
-* If your CUDA version is 11.8, and default version of GCC  >= 12, you have to install another GCC (version: 11.2) with Conda
+* If you want to compile this project on local machine, make sure the additive packages (e.g. **cmake** and **CUDA**) have also been installed. 
 
 #### The following packages are required at runtime: 
 #### 1.1. [PyTorch](https://www.pytorch.org) (version >= 2.6)
