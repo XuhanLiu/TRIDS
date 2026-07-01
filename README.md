@@ -119,14 +119,14 @@ or
 
       $ mkdir build && cd build
 
-      $ cmake ../cmake/linux -DCMAKE_INSTALL_PREFIX=<path/for/trids>
+      $ cmake ../cmake/linux -DCMAKE_INSTALL_PREFIX=<path/for/trids> -DBUILD_PYTHON=ON
 
       $ make install -j 8
 
       $ export PATH=$PATH:<path/for/trids>/bin
 
 **Note:** 
-* **-DBUILD_PYTHON** for **cmake** is set to **ON**, if the **PyTrids** will be installed later manually; default is **OFF**;
+* **-DBUILD_PYTHON** for **cmake** should be **ON**, if the **PyTrids** will be installed later manually; default is **OFF**;
 * **-DCMAKE_INSTALL_PREFIX** is folder path for installation, please replace **<path/for/trids>** with appropriate location; default is **/usr/local**
 * **-j 8** means that the code will be compiled with **eight** CPU cores, this number could be set manually based on your own device.
 
