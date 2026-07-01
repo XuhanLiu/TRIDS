@@ -38,7 +38,7 @@ The sampling space is defined on the degrees of freedom for each molecule, inclu
 ## Installation
 To run the compiled **TRIDS**, some dependent packages need to be installed. You could create an new **Conda** environment with these required packages: 
 
-### 1. Creation of a new Conda environment named **trids** 
+### 1. Creation of a new Conda environment (trids) 
 
 For **Linux**:
 
@@ -52,13 +52,13 @@ For **Windows**:
 
       $ conda env create -f cmake/windows/environment.yml         # CUDA 12.6
 
-After installation, activate the Conda environment **trids**:
+After installation, activating the Conda environment **trids**:
 
       $ conda activate trids
 
 **Note:** 
-* After this environment is created, all of required packages at runtime will be installed automatically.
-* Make sure all of the dependencies have been installed. otherwise, you have to install them manually.
+* After this environment is created, all of packages required at runtime will be installed automatically.
+* Make sure all of the dependencies have been installed. Otherwise, you have to install them manually.
 * If you want to compile this project on local machine, make sure the additive packages (e.g. **cmake** and **CUDA**) have also been installed. 
 
 #### The following packages are required at runtime: 
@@ -135,7 +135,7 @@ or
       > cmake/windows/build.bat
 
 **Note:**
-* Make sure that **Microsoft Visual C++ Build Tools** has been installed. If its version >= 2022, you should also install the following package:
+* Make sure that **Microsoft Visual C++ Build Tools** has been installed. If its version == 2022, you should also install the following package:
   
       > conda install vs2022-win_64 -c conda-forge
 
@@ -160,13 +160,13 @@ or
 
       $ pip uninstall trids
 
-* Generally, the library and execution file have be precompiled in **bin/**. If compatibility issues occurs, delete the folder **bin/** before reinstallation.
+* Generally, the library and execution file have be precompiled in **bin/**. If compatibility issues occurs, delete the folder **bin/** at first.
 
       $ rm -rf bin/                       # on Linux
 
       > rmdir /s /q bin/                  # on Windows
 
-* If **llvm-openmp** has been installed in this **Conda** environment, the openmp library loading will clash on **Windows**. Therefore, you have to either uninstall this package manually, or set the following environmental variable.
+* If **llvm-openmp** has been installed in this **Conda** environment, **trids** will be failed on **Windows** caused by conflict when loading **openmp** library. Therefore, you have to either uninstall this package manually, or set the following environmental variable.
 
       > set KMP_DUPLICATE_LIB_OK=TRUE
 
