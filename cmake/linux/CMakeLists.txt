@@ -36,7 +36,7 @@ set(CMAKE_CUDA_STANDARD 17)
 # Include GNUInstallDirs to use standard path variables like CMAKE_INSTALL_BINDIR/LIBDIR/INCLUDEDIR
 include(GNUInstallDirs)
 set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -ffast-math -flto=auto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ffast-math -flto=auto")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -fopenmp -lcudadevrt -lcufft --use_fast_math -O3")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unknown-pragmas")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
