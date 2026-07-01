@@ -21,7 +21,7 @@ Molecular docking is a cornerstone of drug discovery for unveiling the mechanism
 TRIDS is implemented with PyTorch C++ (LibTorch). It combined multiple optimization of streams parallel computing，CUDA graph-operator merge, automatic differentiation, CUDA kernel function to accelerate the program dramatically. General speaking, any differentiable ML-based scoring function could be compatible with this framework for conformation sampling.
 </p>
 
-### 1. Scorging Function 
+### 1. Scoring Function 
 <p align=justify>
 The main SF in the present work is the mixture density network (MDN), which consists of three key components: a feature extraction module, a feature concatenation module, and a feed-forward output layer. The graphs obtained from the previous step are processed by multiple Graph Transformer blocks to ensure that the processed node features contain not only information about an individual atom or residue in the molecule, but also information about the surrounding nodes. The resulting graphs are then pairwise-concatenated to model the interaction and fed into a feed-forward layer to parameterize a Gaussian mixed model.
 </p>
