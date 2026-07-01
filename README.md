@@ -115,7 +115,7 @@ or
 
 **Note**: If your CUDA version is 11.8, and default GCC version >= 12, this GCC is required to be installed as C++ compiler.
 
-### 2. Install standalone version on **Linux**
+### 2. Installation of standalone version on **Linux**
 
       $ mkdir build && cd build
 
@@ -130,7 +130,7 @@ or
 * **-DCMAKE_INSTALL_PREFIX** is folder path for installation, please replace **<path/for/trids>** with appropriate location; default is **/usr/local**
 * **-j 8** means that the code will be compiled with **eight** CPU cores, this number could be set manually based on your own device.
 
-### 3. Install standalone version on **Windows**
+### 3. Installation of standalone version on **Windows**
 
       > cmake/windows/build.bat
 
@@ -147,7 +147,7 @@ or
 
       > set PATH=%CONDA_PREFIX%\Lib\site-packages\torch\lib;%CONDA_PREFIX%\Library\bin;%PATH%
 
-### 4. Install **PyTrids** for Python
+### 4. Installation of **PyTrids** for Python
 
       $ python setup.py install
 
@@ -170,7 +170,7 @@ or
 
       > set KMP_DUPLICATE_LIB_OK=TRUE
 
-### 5. Install PyMOL plugin (After Step 4)
+### 5. Installation of PyMOL plugin (After Step 4)
 First of all, make sure that **PyTrids** and **PyMOL** has been installed in the same **Conda** environment
 
 **Method 1**: (Recommended)
