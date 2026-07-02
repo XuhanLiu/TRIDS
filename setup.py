@@ -24,7 +24,7 @@ import sysconfig
 import tempfile
 import zipfile
 from pathlib import Path
-
+from typing import Union, Tuple
 from setuptools import setup
 from setuptools.command.bdist_wheel import bdist_wheel
 from setuptools.command.build_py import build_py
@@ -39,7 +39,7 @@ PACKAGE_SOURCE = SOURCE_DIR / "trids"
 IS_WINDOWS = sys.platform == "win32"
 CORE_EXT = ".pyd" if IS_WINDOWS else ".so"
 MSVC_CONFIGS = ("Release", "RelWithDebInfo", "MinSizeRel", "Debug")
-_trids_asset_outputs: list[str] | None = None
+_trids_asset_outputs: list[str] = None
 
 
 def _env_base() -> Path:
@@ -81,7 +81,7 @@ def _artifact_search_dirs(directory: Path) -> list[Path]:
     return dirs
 
 
-def _resolve_artifact_root(directory: Path) -> Path | None:
+def _resolve_artifact_root(directory: Path) -> Path:
     for search_dir in _artifact_search_dirs(directory):
         if IS_WINDOWS:
             has_dll = any((search_dir / name).is_file() for name in ("trids.dll", "libtrids.dll"))
@@ -108,7 +108,7 @@ def _artifact_dir(directory: Path) -> Path:
     return _resolve_artifact_root(directory) or directory
 
 
-def _find_file(directory: Path, names: str | tuple[str, ...]) -> Path | None:
+def _find_file(directory: Path, names: Union[str, Tuple[str, ...]]) -> Path:
     if isinstance(names, str):
         names = (names,)
     for search_dir in _artifact_search_dirs(directory):
@@ -135,7 +135,7 @@ def _copy_glob(source: Path, dest_dir: Path, patterns: tuple[str, ...]) -> list[
     return installed
 
 
-def find_prebuilt_bin_dir(source_dir: Path) -> Path | None:
+def find_prebuilt_bin_dir(source_dir: Path) -> Path:
     if IS_WINDOWS:
         win_root = source_dir / "bin" / "windows"
         if not win_root.is_dir():
@@ -171,7 +171,7 @@ def get_artifact_dir(source_dir: Path) -> Path:
     return find_prebuilt_bin_dir(source_dir) or _artifact_dir(get_build_dir(source_dir))
 
 
-def _find_core_module(prebuilt: Path | None, build_dir: Path) -> Path | None:
+def _find_core_module(prebuilt: Path, build_dir: Path) -> Path:
     if prebuilt is not None:
         for search_dir in _artifact_search_dirs(prebuilt):
             found = next(search_dir.glob(f"_core*{CORE_EXT}"), None)
@@ -355,7 +355,7 @@ def install_all_assets(source_dir: Path, artifact_dir: Path) -> list[str]:
     return installed
 
 
-def _record_relative_path(path: Path, root: Path) -> str | None:
+def _record_relative_path(path: Path, root: Path) -> str:
     try:
         return Path(os.path.relpath(path.resolve(), root.resolve())).as_posix()
     except ValueError:
@@ -435,7 +435,7 @@ def append_assets_to_wheel_record(wheel_path: Path, asset_paths: list[str]) -> i
     return len(entries)
 
 
-def _find_vcvars64() -> Path | None:
+def _find_vcvars64() -> Path:
     if not IS_WINDOWS:
         return None
 
@@ -464,7 +464,7 @@ def _find_vcvars64() -> Path | None:
     return None
 
 
-def _run(cmd: list[str], cwd: Path, env: dict | None = None) -> None:
+def _run(cmd: list[str], cwd: Path, env: dict = None) -> None:
     print(f"  Command: {' '.join(cmd)}")
     print("-" * 60)
     sys.stdout.flush()

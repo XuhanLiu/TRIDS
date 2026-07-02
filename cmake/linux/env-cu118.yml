@@ -6,7 +6,7 @@ channels:
 # Note: The version of PyTorch must be compatible with CUDA
 # Here all of code are compiled with CUDA-11.8
 dependencies:
-  - python>=3.9
+  - python=3.12
   - cudnn=8.9.7
   - openbabel>=3.1.1
   - pybind11>=2.13
