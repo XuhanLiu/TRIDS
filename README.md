@@ -166,10 +166,6 @@ or
 
       > rmdir /s /q bin/                  # on Windows
 
-* If **llvm-openmp** has been installed in this **Conda** environment, **trids** will be failed on **Windows** caused by conflict when loading **openmp** library. Therefore, you have to either uninstall this package manually, or set the following environmental variable.
-
-      > set KMP_DUPLICATE_LIB_OK=TRUE
-
 ### 5. Installation of PyMOL plugin (After Step 4)
 First of all, make sure that **PyTrids** and **PyMOL** has been installed in the same **Conda** environment
 

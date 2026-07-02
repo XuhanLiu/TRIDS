@@ -193,6 +193,21 @@ def _patch_elf_rpath(binary: Path, rpath: str) -> bool:
     ).returncode == 0
 
 
+def _create_windows_launcher(wrapper: Path, real_binary: Path) -> None:
+    """Write a .bat launcher that avoids llvm-openmp DLL clashes in Library/bin."""
+    base = _env_base()
+    torch_lib = base / "Lib" / "site-packages" / "torch" / "lib"
+    bin_dir = get_bin_install_dir()
+    wrapper.parent.mkdir(parents=True, exist_ok=True)
+    wrapper.write_text(
+        "@echo off\r\n"
+        f'set "PATH={torch_lib};{bin_dir};%PATH%"\r\n'
+        "set \"KMP_DUPLICATE_LIB_OK=TRUE\"\r\n"
+        f'"{real_binary}" %*\r\n',
+        encoding="utf-8",
+    )
+
+
 def install_lib_to_env(source_dir: Path, artifact_dir: Path) -> list[str]:
     lib_source = source_dir / "lib"
     lib_dest = get_lib_install_dir()
@@ -225,13 +240,17 @@ def install_bin_to_env(artifact_dir: Path) -> list[str]:
         sys.exit(f"Error: {exe_name} not found in {artifact_dir}")
 
     if IS_WINDOWS:
+        lib_dest = get_lib_install_dir()
         bin_dest = get_bin_install_dir()
-        print(f"Installing trids executable to {bin_dest}")
-        installed = [_copy_file(trids_exe, bin_dest / exe_name)]
-        trids_dll = _find_file(artifact_dir, ("trids.dll", "libtrids.dll"))
-        if trids_dll is not None:
-            installed.append(_copy_file(trids_dll, bin_dest / "trids.dll"))
-        print(f"Executable installed to: {bin_dest / exe_name}")
+        print(f"Installing trids executable to {lib_dest}")
+        real_binary = lib_dest / exe_name
+        installed = [_copy_file(trids_exe, real_binary)]
+
+        wrapper = bin_dest / "trids.bat"
+        print(f"Installing trids launcher to {wrapper}")
+        _create_windows_launcher(wrapper, real_binary)
+        installed.append(str(wrapper))
+        print(f"Executable installed to: {wrapper}")
         return installed
 
     lib_dest = get_lib_install_dir()
@@ -322,8 +341,8 @@ endif()
 def install_all_assets(source_dir: Path, artifact_dir: Path) -> list[str]:
     if IS_WINDOWS:
         print("Windows install layout:")
-        print(f"  Models / _core.pyd / trids.dll -> {get_lib_install_dir()}")
-        print(f"  trids.exe / trids.dll (CLI)     -> {get_bin_install_dir()}")
+        print(f"  Models / _core.pyd / trids.dll / trids.exe -> {get_lib_install_dir()}")
+        print(f"  trids.bat (CLI launcher)                   -> {get_bin_install_dir()}")
         print(f"  Headers                         -> {get_include_install_dir()}")
         print(f"  CMake config                    -> {get_cmake_install_dir()}")
         print(f"  Conda prefix                    -> {_env_base()}")

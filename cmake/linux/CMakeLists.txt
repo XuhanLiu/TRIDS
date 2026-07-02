@@ -81,9 +81,9 @@ print(os.path.dirname(__import__('nvidia.cudnn').cudnn.__file__))
     endif()
 endif()
 
-# RPATH (Linux/macOS only)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH "$ORIGIN;$ORIGIN/../${CMAKE_INSTALL_LIBDIR};$ORIGIN/../lib/trids${TRIDS_VERSION}")
+set(TRIDS_INSTALL_RPATH "$ORIGIN;$ORIGIN/../${CMAKE_INSTALL_LIBDIR};$ORIGIN/../lib/trids${TRIDS_VERSION}")
+set(CMAKE_INSTALL_RPATH "${TRIDS_INSTALL_RPATH}")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
@@ -150,7 +150,7 @@ if(BUILD_PYTHON)
     target_link_libraries(_core PRIVATE libtrids "${TORCH_LIB_PATH}/libtorch_python.so")
     set_target_properties(_core PROPERTIES
         BUILD_WITH_INSTALL_RPATH TRUE
-        INSTALL_RPATH "$ORIGIN;$ORIGIN/../${CMAKE_INSTALL_LIBDIR};${TORCH_LIB_PATH}"
+        INSTALL_RPATH "${TRIDS_INSTALL_RPATH}"
     )
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12")
         target_link_options(_core PRIVATE -Wno-stringop-overread)
