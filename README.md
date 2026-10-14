@@ -196,7 +196,7 @@ If installed CUDA version == 11.8, and default GCC version >= 12, the following 
 
 #### 3.2. Compilation & Installation 
 
-      cmake/windows/build.bat
+      cmake\windows\build.bat
 
 ## Usage
 ### 1. Usage of standalone version: 

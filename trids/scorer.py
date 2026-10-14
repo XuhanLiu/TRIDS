@@ -53,7 +53,7 @@ class BaseScorer:
 
     def set_ligand(self, ligand: Molecule):
         require_core()
-        self._scorer.set_ligand(ligand._obmol)
+        self._scorer.set_ligand(int(ligand._obmol.this))
 
     def set_box(self, ref_coords: torch.Tensor):
         require_core()
@@ -107,7 +107,7 @@ class VinaScorer(BaseScorer):
     def __init__(
         self,
         cutoff: float = 8.0,
-        beta: float = 0.069314718,
+        beta: float = 0.838718,
     ):
         require_core()
         device = get_device()

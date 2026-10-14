@@ -37,7 +37,6 @@
 
 class Receptor {
 public:
-    at::TensorOptions options;
     Graph graph;
     // index of residues each atom belongs to
     at::Tensor idx;
@@ -59,7 +58,7 @@ public:
 
     ~Receptor() = default;
 
-    Receptor(OpenBabel::OBMol* rec, at::Tensor pos, bool is_vina = false, float cutoff = TRIDS_POCKET_CUTOFF, at::TensorOptions options_ = {});
+    Receptor(OpenBabel::OBMol* rec, at::Tensor pos, bool only_vina = false, float cutoff = TRIDS_POCKET_CUTOFF);
 
     void to(at::TensorOptions options_);
 };

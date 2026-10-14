@@ -38,39 +38,94 @@ Example:
     >>> print(f"Best score: {results[0].score}")
 """
 
+from pathlib import Path
 from typing import Optional, List, Union
+
+import torch
 
 from .molecule import Molecule, Receptor, Pocket
 from .scorer import TriScorer, VinaScorer
-from .dock import Engine, DockingResult
-from .utils import log
+from .dock import Engine, DockingResult, poses_from_cluster
+from .utils import get_device, log
 
 ReceptorInput = Union[str, Pocket]
 
 
-def _resolve_pocket(
+def _reference_kind(path: str) -> str:
+    suffix = Path(path).suffix.lower()
+    if suffix == ".pt":
+        return "model"
+    if suffix == ".dat":
+        return "grid"
+    return "ligand"
+
+
+def _load_receptor(path: str, use_vina: bool) -> Receptor:
+    if not path:
+        raise ValueError("receptor is required")
+    log(f"# Loading receptor: {path}")
+    rec = Receptor.from_pdb(path)
+    if use_vina:
+        rec.remove_water()
+    return rec
+
+
+def _tri_model(model: Optional[str], hts: bool) -> str:
+    if model is None:
+        from . import get_model_path
+        name = "libtrids_scoring.pt" if hts else "libtrids_sampling.pt"
+        model = str(get_model_path(name))
+    return model
+
+
+def _make_scorers(model: Optional[str], use_vina: bool, hts: bool, score_only: bool):
+    """Match main.cpp: HTS loads the scoring model; Vina HTS rescores with it."""
+    load_model = (not use_vina) or (hts and not score_only)
+    tri = None
+    if load_model:
+        model = _tri_model(model, hts)
+        log(f"# Using TRI scoring function: {model}")
+        tri = TriScorer(model_path=model)
+    if use_vina:
+        log("# Using Vina scoring function")
+        scorer = VinaScorer()
+        screener = tri if hts and not score_only else None
+        return scorer, screener
+    return tri, None
+
+
+def _docking_pockets(
     receptor: ReceptorInput,
-    lig: Molecule,
     reference: Optional[str],
     radius: float,
     use_vina: bool,
-) -> Pocket:
-    if isinstance(receptor, str):
-        if not receptor:
-            raise ValueError("receptor is required")
-        log(f"# Loading receptor: {receptor}")
-        rec = Receptor.from_pdb(receptor)
-        rec.delete_hydrogens()
-        if reference is not None:
-            log(f"# Extracting pocket from reference: {reference}")
-            ref = Molecule.from_file(reference)
-            ref.delete_hydrogens()
-            return rec.extract_pocket(ref, radius=radius, is_vina=use_vina)
-        log("# Extracting pocket from ligand position")
-        return rec.extract_pocket(lig, radius=radius, is_vina=use_vina)
+    hts: bool = False,
+) -> List[Pocket]:
+    if not isinstance(receptor, str):
+        log("# Using pre-defined pocket")
+        return [receptor]
 
-    log("# Using pre-defined pocket")
-    return receptor
+    only_vina = use_vina and not hts
+    rec = _load_receptor(receptor, use_vina)
+    if not reference:
+        from . import get_model_path
+        reference = str(get_model_path("libtrids_site_binding.pt"))
+    kind = _reference_kind(reference)
+    if kind == "model":
+        log(f"# Predicting pockets: {reference}")
+        pockets = rec.predict_pockets(reference, cutoff=radius, only_vina=only_vina)
+    elif kind == "grid":
+        log(f"# Loading pocket profile: {reference}")
+        pockets = rec.load_pockets(reference, cutoff=radius, only_vina=only_vina)
+    else:
+        log(f"# Extracting pockets from reference: {reference}")
+        pockets = []
+        for ref in Molecule.read_all(reference):
+            ref.delete_hydrogens()
+            pockets.append(rec.extract_pocket(ref, radius=radius, only_vina=only_vina))
+    if not pockets:
+        raise RuntimeError("Failed to extract binding pocket")
+    return pockets
 
 
 def docking(
@@ -79,30 +134,34 @@ def docking(
     reference: Optional[str] = None,
     model: Optional[str] = None,
     top_n: int = 1,
-    streams: int = 256,
-    depth: int = 32,
+    streams: int = 1024,
+    depth: int = 8,
     use_vina: bool = False,
     radius: float = 8.0,
+    hts: bool = False,
     verbose: int = 0,
 ) -> List[DockingResult]:
     """
-    One-step molecular docking function
-    
+    One-step molecular docking function.
+
     Args:
         receptor: Receptor PDB file path, or a pre-defined Pocket object
-        ligand: Ligand file path (supports sdf, mol2, pdb, smi)
-        reference: Reference ligand file path for defining binding pocket (optional)
-        model: TRI model weights path (default: lib/libtrids_sampling.pt)
-        top_n: Number of top conformations to return
-        streams: Number of parallel sampling tasks
-        depth: Monte Carlo search depth
-        use_vina: Whether to use Vina scoring function
+        ligand: Ligand file path (supports sdf, mol2, pdb, smi). Every record is docked.
+        reference: Pocket source. Omitted uses libtrids_site_binding.pt.
+            .pt predicts sites, .dat loads a grid profile, and a ligand file
+            makes one pocket per reference molecule.
+        model: TRI weights. Default is libtrids_sampling.pt, or libtrids_scoring.pt when hts is set.
+        top_n: Number of top conformations kept after clustering
+        streams: Parallel Monte Carlo walkers (default 1024)
+        depth: Monte Carlo search depth (default 8)
+        use_vina: Sample with the Vina scoring function
         radius: Pocket extraction radius (Angstrom)
+        hts: Rescore Vina samples with libtrids_scoring.pt. Without Vina, sample with that model.
         verbose: Log level, 0=quiet, 1=warn, 2=info (default: 0)
-        
+
     Returns:
         List[DockingResult]: Docking results list
-        
+
     Example:
         >>> import trids
         >>> results = trids.docking(
@@ -121,7 +180,7 @@ def docking(
     try:
         return _docking_impl(
             receptor, ligand, reference, model, top_n,
-            streams, depth, use_vina, radius,
+            streams, depth, use_vina, radius, hts,
         )
     finally:
         set_verbose(prev_verbose)
@@ -133,46 +192,43 @@ def _docking_impl(
     reference: Optional[str] = None,
     model: Optional[str] = None,
     top_n: int = 1,
-    streams: int = 256,
-    depth: int = 32,
+    streams: int = 1024,
+    depth: int = 8,
     use_vina: bool = False,
     radius: float = 8.0,
+    hts: bool = False,
 ) -> List[DockingResult]:
-    log(f"# Loading ligand: {ligand}")
-    lig = Molecule.from_file(ligand)
-    lig.delete_hydrogens()
+    pockets = _docking_pockets(receptor, reference, radius, use_vina, hts)
+    for pocket in pockets:
+        log(f"# Pocket: {pocket.num_residues} residues, {pocket.num_atoms} atoms")
 
-    pocket = _resolve_pocket(receptor, lig, reference, radius, use_vina)
-    log(f"# Pocket: {pocket.num_residues} residues, {pocket.num_atoms} atoms")
-    
-    # Create scoring function
-    if use_vina:
-        log("# Using Vina scoring function")
-        scorer = VinaScorer()
-    else:
-        if model is None:
-            from . import get_model_path
-            model = str(get_model_path("libtrids_sampling.pt"))
-        
-        log(f"# Using TRI scoring function: {model}")
-        scorer = TriScorer(model_path=model)
-    
-    # Create docking engine
-    engine = Engine(
-        scorer=scorer,
-        streams=streams,
-        depth=depth,
-        top_n=top_n,
-    )
-    
-    log(f"# Docking {lig.title or 'ligand'} into pocket...")
-    results = engine.dock(lig, pocket)
-    
-    # Output results
+    scorer, screener = _make_scorers(model, use_vina, hts, score_only=False)
+    engine = Engine(scorer=scorer, streams=streams, depth=depth, top_n=top_n)
+
+    log(f"# Loading ligand: {ligand}")
+    results: List[DockingResult] = []
+    for index, lig in enumerate(Molecule.read_all(ligand)):
+        if not lig.title:
+            lig.title = f"TRIDS_{index}"
+        log(f"# Docking {lig.title} into {len(pockets)} pocket(s)...")
+        coord_list = []
+        score_list = []
+        for pocket_i, pocket in enumerate(pockets):
+            coords, scores = engine.docking(
+                lig, pocket, screener, ligand_ready=pocket_i > 0,
+            )
+            coord_list.append(coords)
+            score_list.append(scores)
+            if get_device().startswith("cuda") and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        poses = poses_from_cluster(
+            lig, torch.cat(coord_list, 0), torch.cat(score_list, 0), top_n,
+        )
+        results.extend(poses)
+
     log(f"# Docking completed. Top {len(results)} results:")
     for result in results:
         log(f"#   Rank {result.rank}: score = {result.score:.2f}")
-    
     return results
 
 
@@ -183,40 +239,38 @@ def _scoring_impl(
     model: Optional[str] = None,
     use_vina: bool = False,
     radius: float = 8.0,
-) -> float:
+    hts: bool = False,
+) -> Union[float, List[float]]:
     """
-    Calculate score only (without docking sampling)
-    
-    Args:
-        receptor: Receptor PDB file path, or a pre-defined Pocket object
-        ligand: Ligand file path
-        reference: Reference ligand file path
-        model: Model weights path
-        use_vina: Whether to use Vina scoring function
-        radius: Pocket extraction radius
-        
-    Returns:
-        float: Docking score
+    Calculate score only (without docking sampling).
+
+    A reference ligand fixes the pocket. A site model or grid profile is not
+    used: the pocket is cut around the ligand coordinates, matching score_only.
     """
-    lig = Molecule.from_file(ligand)
-    lig.delete_hydrogens()
-    pocket = _resolve_pocket(receptor, lig, reference, radius, use_vina)
-    # Create scoring function
-    if use_vina:
-        scorer = VinaScorer()
+    scorer, _screener = _make_scorers(model, use_vina, hts, score_only=True)
+    ligands = Molecule.read_all(ligand)
+    fixed = None
+    rec = None
+    if isinstance(receptor, str):
+        rec = _load_receptor(receptor, use_vina)
+        if reference and _reference_kind(reference) == "ligand":
+            ref = Molecule.read_all(reference)[0]
+            ref.delete_hydrogens()
+            fixed = rec.extract_pocket(ref, radius=radius, only_vina=use_vina)
     else:
-        if model is None:
-            from . import get_model_path
-            model = str(get_model_path("libtrids_sampling.pt"))
-        scorer = TriScorer(model_path=model)
-    
-    # Set up and score
-    scorer.set_pocket(pocket)
-    scorer.set_ligand(lig)
-    scorer.profile()
-    
-    score = scorer.score(lig.coordinates)
-    return score
+        fixed = receptor
+    scores = []
+    for lig in ligands:
+        pocket = fixed
+        if pocket is None:
+            pocket = rec.extract_pocket(lig, radius=radius, only_vina=use_vina)
+        scorer.set_pocket(pocket)
+        scorer.set_ligand(lig)
+        scorer.profile()
+        scores.append(scorer.score(lig.coordinates))
+    if len(scores) == 1:
+        return scores[0]
+    return scores
 
 
 def scoring(
@@ -226,22 +280,25 @@ def scoring(
     model: Optional[str] = None,
     use_vina: bool = False,
     radius: float = 8.0,
+    hts: bool = False,
     verbose: int = 0,
-) -> float:
+) -> Union[float, List[float]]:
     """
     Calculate score only (without docking sampling).
 
     Args:
         receptor: Receptor PDB file path, or a pre-defined Pocket object
-        ligand: Ligand file path
-        reference: Reference ligand file path
-        model: Model weights path
-        use_vina: Whether to use Vina scoring function
+        ligand: Ligand file path. One score is returned per record.
+        reference: Reference ligand file. A .pt or .dat path is ignored and the
+            pocket is taken from the ligand coordinates.
+        model: TRI weights. Default is libtrids_sampling.pt, or libtrids_scoring.pt when hts is set.
+        use_vina: Whether to use the Vina scoring function
         radius: Pocket extraction radius
+        hts: With Vina this flag is ignored. Without Vina, load libtrids_scoring.pt.
         verbose: Log level, 0=quiet, 1=warn, 2=info (default: 0)
 
     Returns:
-        float: Docking score
+        float: Score of a single-record file. A list when the file has several records.
     """
     from . import set_verbose, get_verbose
 
@@ -249,7 +306,7 @@ def scoring(
     set_verbose(verbose)
     try:
         return _scoring_impl(
-            receptor, ligand, reference, model, use_vina, radius,
+            receptor, ligand, reference, model, use_vina, radius, hts,
         )
     finally:
         set_verbose(prev_verbose)

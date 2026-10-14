@@ -43,49 +43,80 @@ void Scorer::set_pocket(Receptor& rec) {
 }
 
 void Scorer::set_ligand(OpenBabel::OBMol* lig) {
+    lig->AddHydrogens(true);
+    count_atoms(lig);
+    lig_hd = torch::empty({ num_heavy_atoms }, torch::kBool);
+    lig_ha = torch::empty({ num_heavy_atoms }, torch::kBool);
+    int atom_i = 0;
+    FOR_ATOMS_OF_MOL(atom, lig) {
+        if (atom->GetAtomicNum() > 1) {
+            lig_hd[atom_i] = OpenBabel::IsHbondDonor(*atom);
+            lig_ha[atom_i] = OpenBabel::IsHbondAcceptor(*atom);
+            atom_i++;
+        }
+    }
+    lig_hd = lig_hd.to(OPTIONS.device());
+    lig_ha = lig_ha.to(OPTIONS.device());
     inner_nbr = get_neighbors(lig);
-    num_tors = static_cast<int>(OpenBabel::num_tors(lig));
+    num_tors = OpenBabel::num_tors(lig);
+    lig->DeleteHydrogens();
 }
 
 void Scorer::profiling() {
     // make_grid();
 }
 
+void Scorer::count_atoms(OpenBabel::OBMol* lig) {    
+    num_heavy_atoms = 0;
+    num_h_atoms = 0;
+    FOR_ATOMS_OF_MOL(atom, lig) {
+        if (atom->GetAtomicNum() > 1) {
+            ++num_heavy_atoms;
+        } else if (atom->GetAtomicNum() == 1) {
+            ++num_h_atoms;
+        }
+    }
+}
+
 at::Tensor Scorer::get_neighbors(OpenBabel::OBMol* lig) {
-    inner_nbr = torch::eye({ lig->NumAtoms() });
+    inner_nbr = torch::eye({ num_heavy_atoms });
+    std::vector<int> heavy_id(lig->NumAtoms(), -1);
+    int k = 0;
+    FOR_ATOMS_OF_MOL(atom, lig) {
+        if (atom->GetAtomicNum() > 1) {
+            heavy_id[atom->GetIndex()] = k++;
+        }
+    }
     FOR_BONDS_OF_MOL(bond, lig) {
-        int i = bond->GetBeginAtom()->GetIndex();
-        int j = bond->GetEndAtom()->GetIndex();
+        const int i = heavy_id[bond->GetBeginAtom()->GetIndex()];
+        const int j = heavy_id[bond->GetEndAtom()->GetIndex()];
+        if (i < 0 || j < 0) {
+            continue;
+        }
         inner_nbr[i][j] = 1;
         inner_nbr[j][i] = 1;
     }
     inner_nbr = ~inner_nbr.mm(inner_nbr).mm(inner_nbr).to(torch::kBool);
-    return inner_nbr.to(options.device());
+    return inner_nbr.to(OPTIONS.device());
 }
 
 void TriScorer::set_ligand(OpenBabel::OBMol* lig) {
     auto start = clock();
     spdlog::info("Extract ligand features begin ...");
     Scorer::set_ligand(lig);
-    lig_vdw = torch::empty({ lig->NumAtoms() });
-    lig_hd = torch::empty({ lig->NumAtoms() }, torch::kBool);
-    lig_ha = torch::empty({ lig->NumAtoms() }, torch::kBool);
+    lig_vdw = torch::empty({ num_heavy_atoms });
+    int atom_i = 0;
     FOR_ATOMS_OF_MOL(atom, lig) {
-        int id = atom->GetIndex();
-        float vdw = OpenBabel::OBElements::GetVdwRad(atom->GetAtomicNum());
-        lig_vdw[id] = vdw;
-
-        bool is_hd = OpenBabel::IsHbondDonor(*atom);
-        bool is_ha = atom->IsHbondAcceptor();
-        lig_hd[id] = is_hd;
-        lig_ha[id] = is_ha;
+        if (atom->GetAtomicNum() > 1) {
+            float vdw = OpenBabel::OBElements::GetVdwRad(atom->GetAtomicNum());
+            lig_vdw[atom_i] = vdw;
+        }
+        atom_i++;
     }
-    lig_vdw = lig_vdw.to(options);
-    lig_hd = lig_hd.to(options.device());
-    lig_ha = lig_ha.to(options.device());
+    lig_vdw = lig_vdw.to(OPTIONS.device());
     
     lig_graph = Feature::obmol_to_graph(lig);
-    lig_graph.to(options);
+    lig_graph.to(OPTIONS);
 
     auto duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
     spdlog::info("Extract ligand features end ({:.4f}s)", duration);
@@ -176,33 +207,8 @@ at::Tensor TriScorer::interpolate(at::Tensor pos) {
 }
 
 at::Tensor TriScorer::scoring(at::Tensor pos) {
-    auto distances = torch::cdist(pos, rec->pos);
-    auto dists = torch::empty({ pos.size(0), rec->num_res }, options);
-    auto index = rec->idx.view({ 1, -1 }).expand({ pos.size(0), -1 });
-    distances = dists.scatter_reduce(-1, index, distances, "amin", false);
-
-    distances = distances.unsqueeze(-1);
-    // std::cout << data << std::endl;
-    auto prob = distances.repeat({ 1, 1, mu.size(-1) });
-    prob.sub_(mu).pow_(2).mul_(-var.mul_(0.5)).add_(data).exp_();
-    // auto prob = -(distances` - mu).pow(2) * (var * 0.5) - log_scale - log_sqrt_pi + log_rho;
-    // std::cout << prob << std::endl;
-    prob = prob.sum(-1, true) * (distances <= TRIDS_MDN_CUTOFF);
-    auto score = prob.sum();
-
-    // penalty for atom clashing between ligand and recetpor
-    auto mask = distances < TRIDS_CLASH_CUTOFF;
-    auto inter_penalty = torch::log(distances / TRIDS_CLASH_CUTOFF).masked_fill(~mask, 0);
-    inter_penalty = inter_penalty.sum();
-    
-    // penalty for atom clashing within the ligand.
-    auto inner_dist = torch::cdist(pos, pos).clip(FLT_EPSILON);
-    mask = (inner_dist < TRIDS_CLASH_CUTOFF) & inner_nbr;
-    auto inner_penalty = torch::log(inner_dist / TRIDS_CLASH_CUTOFF).masked_fill(~mask, 0);
-    inner_penalty = inner_penalty.sum() * 0.5f;
-
-    auto total_score = score + inter_penalty + inner_penalty; 
-    return -total_score;
+    pos = pos.unsqueeze(0);
+    return TriAccurateScoring::apply(pos, this).squeeze(0)[0];
 }
 
 at::Tensor TriScorer::batched_auto_scoring(at::Tensor pos) {
@@ -210,7 +216,7 @@ at::Tensor TriScorer::batched_auto_scoring(at::Tensor pos) {
     auto num_atoms = pos.size(1);
 
     auto distances = at::cdist(pos, rec->pos);
-    auto dists = at::full({ batch_size, num_atoms, rec->num_res }, FLT_MAX, options);
+    auto dists = at::full({ batch_size, num_atoms, rec->num_res }, FLT_MAX, OPTIONS);
     auto index = rec->idx.view({ 1, 1, -1 }).expand({ batch_size, num_atoms, -1 });
     distances = dists.scatter_reduce(-1, index, distances, "amin", false).clip(FLT_EPSILON);
     

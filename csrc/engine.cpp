@@ -33,8 +33,6 @@
 #include <spdlog/spdlog.h>
 #include "engine.h"
 #include "constant.h"
-#include "sampling.cuh"
-#include "rand.h"
 
 
 void Engine::refine_structures(Conformer& conformer, Dofs& dofs, torch::optim::Optimizer& optimizer) {
@@ -98,10 +96,9 @@ void Engine::refine_structures(Conformer& conformer, Dofs& dofs, torch::optim::O
     dofs.require_grad(false);
 }
 
-at::Tensor Engine::metropolis_accept(at::Tensor curr_score, at::Tensor prev_score,
-                                      float beta, RNG& rng) {
+at::Tensor Engine::metropolis_accept(at::Tensor curr_score, at::Tensor prev_score, float beta) {
     auto acceptance_probability = ((prev_score - curr_score) * beta).exp();
-    auto mask_rejected = acceptance_probability < torch::rand({ num_tasks }, options);
+    auto mask_rejected = acceptance_probability < torch::rand({ num_tasks }, OPTIONS);
     // std::cout << acceptance_probability << std::endl;
     // std::cout << mask_rejected << std::endl;
     return mask_rejected;
@@ -129,10 +126,10 @@ void Engine::add_result_to_accepted_list(list<Result>& results, Result& result) 
 }
 
 at::Tensor Engine::scoring(at::Tensor lig_pos) {
-    return scorer->scoring(lig_pos) / (1 + scorer->num_tors * TRIDS_OMEGA);
+    return scorer->scoring(lig_pos) / (1 + scorer->num_tors * scorer->omega);
 }
 
-std::tuple<torch::Tensor, torch::Tensor> Engine::docking(Conformer& conformer, RNG& rng) {
+std::tuple<torch::Tensor, torch::Tensor> Engine::docking(Conformer& conformer) {
     clock_t start = std::clock();
     float duration;
 
@@ -149,7 +146,7 @@ std::tuple<torch::Tensor, torch::Tensor> Engine::docking(Conformer& conformer, R
         prev_dofs.copy(dofs);
         auto prev_score = curr_score.clone();
         for (auto depth = 0; depth < max_depth; depth++) {
-            dofs.mutate(scorer->rec->box_min, scorer->rec->box_max, rng);
+            dofs.mutate(scorer->rec->box_min, scorer->rec->box_max);
 
             for (auto i = 0; i < 50; i++) {
                 refine_step();
@@ -162,7 +159,7 @@ std::tuple<torch::Tensor, torch::Tensor> Engine::docking(Conformer& conformer, R
                 best_coord.index_put_({ update_ids }, conformer.pos.index_select(0, update_ids));
             }
 
-            auto mask_rejected = metropolis_accept(curr_score.select(1, 1), prev_score.select(1, 1), scorer->beta, rng);
+            auto mask_rejected = metropolis_accept(curr_score.select(1, 1), prev_score.select(1, 1), scorer->beta);
             auto reject_ids = mask_rejected.nonzero().squeeze(1);
 
             if (reject_ids.size(0) > 0) {
@@ -180,7 +177,7 @@ std::tuple<torch::Tensor, torch::Tensor> Engine::docking(Conformer& conformer, R
         conformer.pos.detach_();
     };
 
-    if (options.device().is_cuda()) {
+    if (OPTIONS.device().is_cuda()) {
         spdlog::info("CUDA Graph warming up begin ...");
 
         static at::cuda::CUDAStream capture_stream = at::cuda::getStreamFromPool();
@@ -221,5 +218,5 @@ std::tuple<torch::Tensor, torch::Tensor> Engine::docking(Conformer& conformer, R
         spdlog::info("CPU sampling end ({:.4f}s)", duration);
     }
 
-    return { best_coord.detach(), best_score.detach() / (1 + scorer->num_tors * TRIDS_OMEGA) };
+    return { best_coord.detach(), best_score.detach() / (1 + scorer->num_tors * scorer->omega) };
 }

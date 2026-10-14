@@ -107,6 +107,7 @@ def set_device(arg1: str, arg2: int) -> None:
             f"GPU index {arg2} is out of range; "
             f"available GPUs: 0..{torch.cuda.device_count() - 1}"
         )
+    torch.cuda.set_device(arg2)
     _device = f"cuda:{arg2}"
     _num_threads = None
 
@@ -189,16 +190,16 @@ def kabsch_align(
 
 def set_seed(seed: int):
     """
-    Set random seed for reproducibility
+    Set the random seed for Python, PyTorch, and the C++ sampler.
 
     Args:
         seed: Random seed
     """
     import random
+    from . import _core, require_core
+    require_core()
     random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    _core.set_seed(int(seed))
 
 
 def device_from_index(device_id: int = 0) -> torch.device:

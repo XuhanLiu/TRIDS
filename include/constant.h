@@ -31,10 +31,15 @@
 
 #pragma once
 
-#include <unordered_map>
-#include <vector>
-#include <string>
 #include <math.h>
+#include <random>
+#include <torch/torch.h>
+
+using RNG = std::mt19937;
+
+// One definition each, in csrc/rand.cpp. Both libraries link that object.
+extern RNG rng;
+extern at::TensorOptions OPTIONS;
 
 constexpr static float PI = 3.141592653589793f;
 constexpr static float log_sqrt_pi = 0.9189385332046727f;  // log(sqrt(2 * PI))
@@ -52,7 +57,7 @@ constexpr static float TRIDS_HBOND_MIN = 2.6f;
 constexpr static float TRIDS_HBOND_SIGMA2_INV = 1.0f / 0.3f / 0.3f;
 
 constexpr static int HYDROGEN_ATOM_TYPE_SERIAL = 17;
-constexpr static float OMEGA_VINA = 0.292300f * 0.2f;
+constexpr static float VINA_OMEGA = 0.292300f * 0.2f;
 constexpr static float GAUSS1 = -0.035579;
 constexpr static float GAUSS1_2 = 4.;
 
@@ -76,6 +81,27 @@ constexpr static float H_BOND_UB = 0.;
 
 constexpr static float HYDRO_RANGE = (HYDRO_UB - HYDRO_UA) / (HYDRO_B - HYDRO_A);
 constexpr static float H_BOND_RANGE = (H_BOND_UB - H_BOND_UA) / (H_BOND_B - H_BOND_A);
+
+const std::unordered_map<int, float> VINA_VDW = {
+    {0, 1.9f},    // C_H
+    {1, 1.9f},    // C_P
+    {2, 1.8f},    // N_P
+    {3, 1.8f},    // N_D
+    {4, 1.8f},    // N_A
+    {5, 1.8f},    // N_DA
+    {6, 1.7f},    // O_P
+    {7, 1.7f},    // O_D
+    {8, 1.7f},    // O_A
+    {9, 1.7f},    // O_DA
+    {10, 2.0f},   // S_P
+    {11, 2.1f},   // P_P
+    {12, 1.5f},   // F_H
+    {13, 1.8f},   // Cl_H
+    {14, 2.0f},   // Br_H
+    {15, 2.2f},   // I_H
+    {16, 1.2f},   // Met_D
+    {17, -100.f}, // H
+};
 
 namespace Feature {
     const std::unordered_map<std::string, std::vector<float>> RESI_ATOM_FEAT = {

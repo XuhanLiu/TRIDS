@@ -28,34 +28,32 @@
 */
 #pragma once
 
-#include <random>
 #include <torch/torch.h>
 
 
 using namespace std;
 
-typedef mt19937 RNG;
-
 // expects a < b, returns rand in [a, b]
-float randf(float a, float b, RNG& rng);
+float randf(float a, float b);
 
 // expects sigma >= 0
-float randn(float mean, float sigma, RNG& rng);
+float randn(float mean, float sigma);
 
 // expects a <= b, returns rand in [a, b]
-int randi(int a, int b, RNG& rng);
+int randi(int a, int b);
 
 // expects a <= b, returns rand in [a, b]
-size_t randsz(size_t a, size_t b, RNG& rng);
+size_t randsz(size_t a, size_t b);
 
 // returns a random Crd inside the sphere centered at 0 with radius 1
-at::Tensor rand_sphere(RNG& rng, torch::TensorOptions option = {});
+at::Tensor rand_sphere();
 
 // expects corner1[i] < corner2[i]
-at::Tensor rand_inbox(const torch::Tensor& corner1, const torch::Tensor& corner2, RNG& rng);
+at::Tensor rand_inbox(const torch::Tensor& corner1, const torch::Tensor& corner2);
 
 // make seed from PID and time
 int auto_seed();
 
+void set_seed(int seed);
 
 int my_pid();

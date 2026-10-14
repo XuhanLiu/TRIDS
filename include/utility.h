@@ -38,7 +38,6 @@
 #include <openbabel/obiter.h>
 #include <openbabel/elements.h>
 #include <openbabel/stereo/cistrans.h>
-#include <iostream>
 #include <vector>
 
  // 1	Hydrogen (H)    1
@@ -176,22 +175,15 @@ namespace OpenBabel {
 
 	bool IsHydrophobic(OBAtom& atom);
 
+	bool IsHbondAcceptor(OBAtom& atom);
+
+	bool IsHalogen(OBAtom& atom);
+	
 	int atom2type(OpenBabel::OBAtom& atom, bool is_hydro, bool is_ha, bool is_hd);
 
-	using AdjList = std::vector<std::vector<int>>;
+	bool is_rot_bond(OBBond& bond);
 
-	AdjList build_adjacency(OBMol* mol);
-
-	int largest_component_without_atom(int removed, const AdjList& adj);
-
-	int find_pivot(OBMol* mol, const AdjList& adj);
-
-	std::vector<int> component_without_bond(int start, int u, int v, const AdjList& adj);
-
-	bool fragments_split_by_bond(int src_id, int dst_id, const AdjList& adj,
-								 std::vector<int>& comp_src, std::vector<int>& comp_dst);
-
-	bool is_rot_bond(OBBond* bond, int pivot);
+	int find_pivot(OBMol* mol);
 
 	struct RotatableBond {
 		int src;
@@ -200,9 +192,9 @@ namespace OpenBabel {
 	};
 
 	std::vector<RotatableBond> find_rotatable_bonds(
-		OBMol* mol, int* pivot = nullptr, const std::vector<int>* norotate = nullptr);
+		OBMol* mol, int pivot, const std::vector<int>* norotate = nullptr);
 
-	unsigned num_tors(OBMol* mol, const std::vector<int>* norotate = nullptr);
+	float num_tors(OBMol* mol);
 }
 
 

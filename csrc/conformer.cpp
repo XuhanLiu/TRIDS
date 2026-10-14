@@ -109,32 +109,32 @@ void Dof::init(at::Tensor box_min, at::Tensor box_max, unsigned num_tors) {
 	// std::cout << quaternion_increment(qt, qt2);
 }
 
-void Dof::mutate(at::Tensor box_min, at::Tensor box_max, float amplitude, RNG& rng) {
+void Dof::mutate(at::Tensor box_min, at::Tensor box_max, float amplitude) {
 	int num_dof = tors.size(0) + 2;
-	int which = randi(0, num_dof - 1, rng);
+	int which = randi(0, num_dof - 1);
 	assert(which >= 0 && which < num_dof);
 
 	if (which == 0) {
-		mutate_trans(box_min, box_max, amplitude, rng);
+		mutate_trans(box_min, box_max, amplitude);
 		return;
 	}
 	which--;
 	if (which == 0) {
-		mutate_rots(amplitude, rng);
+		mutate_rots(amplitude);
 	}
 	which--;
 	if (which < tors.size(0)) {
-		mutate_tors(which, rng);
+		mutate_tors(which);
 		return;
 	}
 }
 
-void Dof::mutate_trans(at::Tensor box_min, at::Tensor box_max, float amplitude, RNG& rng) {
+void Dof::mutate_trans(at::Tensor box_min, at::Tensor box_max, float amplitude) {
 	bool in_box = false;
 	at::Tensor trans_;
 	int i = 10;
 	while (!in_box && i > 0) {
-		trans_ = amplitude * rand_sphere(rng).to(trans.options());
+		trans_ = amplitude * rand_sphere().to(trans.options());
 		auto current = trans + trans_;
 		in_box = (current > box_min).logical_and(current < box_max).all().item<bool>();
 		i--;
@@ -145,18 +145,18 @@ void Dof::mutate_trans(at::Tensor box_min, at::Tensor box_max, float amplitude, 
 	trans += trans_;
 }
 
-void Dof::mutate_rots(float amplitude, RNG& rng) {
+void Dof::mutate_rots(float amplitude) {
 	// float gr = gyration_radius();
 	auto theta = torch::tensor({ amplitude / PI / 2 }, rots.options());
-	auto axis = rand_sphere(rng).to(rots.options());
+	auto axis = rand_sphere().to(rots.options());
 	auto qt1 = Rotation::rot_vec_to_quaternion(axis, theta);
 	auto qt2 = Rotation::euler_to_quaternion(rots);
 	auto qt = Rotation::quaternion_increment(qt1, qt2);
 	rots = Rotation::quaternion_to_euler(qt);
 }
 
-void Dof::mutate_tors(int which, RNG& rng) {
-	tors[which] = randf(-PI, PI, rng);
+void Dof::mutate_tors(int which) {
+	tors[which] = randf(-PI, PI);
 }
 
 void Dof::clear() {
@@ -194,7 +194,7 @@ void Dofs::init(at::Tensor box_min, at::Tensor box_max, unsigned batch_size_, un
 	// std::cout << Rotation::batched_quaternion_increment(qt, qt2) << std::endl;
 }
 
-void Dofs::mutate(at::Tensor box_min, at::Tensor box_max, RNG& rng) {
+void Dofs::mutate(at::Tensor box_min, at::Tensor box_max) {
 	// auto start = clock();
 	int num_dof = tors.size(1) + 6;
 
@@ -262,8 +262,8 @@ Dofs Dofs::clone() {
 }
 
 
-Conformer::Conformer(OpenBabel::OBMol* lig_, int num_tasks, torch::TensorOptions options_)
-	: lig(lig_), options(options_) {
+Conformer::Conformer(OpenBabel::OBMol* lig_, int num_tasks)
+	: lig(lig_) {
 
 	spdlog::info("Find rotational bond begin ...");
 	auto start = clock();
@@ -295,7 +295,7 @@ Conformer::Conformer(OpenBabel::OBMol* lig_, int num_tasks, torch::TensorOptions
 	}
 	lig_pos = lig_pos - lig_pos[pivot];
 	init_pos = init_pos - init_pos.select(1, pivot).unsqueeze(1);	
-	init_pos = init_pos.expand({ repeats, -1, -1 }).to(options);
+	init_pos = init_pos.expand({ repeats, -1, -1 }).to(OPTIONS);
 	if (init_pos.size(0) > num_tasks) {
 		init_pos = init_pos.slice(0, 0, num_tasks);
 	}
@@ -312,12 +312,13 @@ inline float Conformer::gyration_radius() {
 
 void Conformer::get_torsions(OpenBabel::OBMol* mol, const std::optional<vector<int> >& norotate) {
 	const std::vector<int>* norot = norotate.has_value() ? &norotate.value() : nullptr;
-	const auto bonds = OpenBabel::find_rotatable_bonds(mol, &pivot, norot);
+	pivot = OpenBabel::find_pivot(mol);
+	const auto bonds = OpenBabel::find_rotatable_bonds(mol, pivot, norot);
 	for (const auto& entry : bonds) {
 		tor_bonds.push_back(entry.src);
 		tor_bonds.push_back(entry.dst);
 		std::vector<int64_t> mask_atoms(entry.rotating.begin(), entry.rotating.end());
-		auto mask = torch::tensor(mask_atoms, torch::TensorOptions().dtype(torch::kLong).device(options.device()));
+		auto mask = at::tensor(mask_atoms, at::TensorOptions().dtype(at::kLong).device(OPTIONS.device()));
 		tor_masks.push_back(mask);
 	}
 }
@@ -385,8 +386,7 @@ void Conformer::batched_cuda_update_coord(Dofs& dofs) {
 	Sampling::apply(dofs.trans, dofs.rots, dofs.tors, this);
 }
 
-void Conformer::to(torch::TensorOptions options_) {
-	options = options_;
+void Conformer::to(at::TensorOptions options) {
 	lig_pos = lig_pos.to(options);
 	for (auto& tor_mask : tor_masks) {
 		tor_mask = tor_mask.to(options.device());

@@ -259,14 +259,14 @@ void vina_make_grid_cpu(
 }
 
 
-Grid::Grid(int num_grids_, float cutoff_, at::TensorOptions options_) 
-	: num_grids(num_grids_), cutoff(cutoff_), options(options_) {
+Grid::Grid(int num_grids_, float cutoff_) 
+	: num_grids(num_grids_), cutoff(cutoff_) {
 	
-	auto bool_opt = at::TensorOptions().device(options.device()).dtype(at::kByte);
+	auto bool_opt = at::TensorOptions().device(OPTIONS.device()).dtype(at::kByte);
 	base_ha = at::tensor({ 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 }, bool_opt).to(at::kBool);
 	base_hd = at::tensor({0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0 }, bool_opt).to(at::kBool);
 	base_hydro = at::tensor({1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0 }, bool_opt).to(at::kBool);
-	base_vdw = at::tensor({ 1.9, 1.9, 1.8, 1.8, 1.8, 1.8, 1.7, 1.7, 1.7, 1.7, 2.0, 2.1, 1.5, 1.8, 2.0, 2.2, 1.2, -100.f }, options);
+	base_vdw = at::tensor({ 1.9, 1.9, 1.8, 1.8, 1.8, 1.8, 1.7, 1.7, 1.7, 1.7, 2.0, 2.1, 1.5, 1.8, 2.0, 2.2, 1.2, -100.f }, OPTIONS);
 	
 	box_len = { 30.f, 30.f, 30.f };
 	grid_dim.x = num_grids;
@@ -278,8 +278,8 @@ Grid::Grid(int num_grids_, float cutoff_, at::TensorOptions options_)
 }
 
 void Grid::Cuda_Texture_Initial() {
-	potential = at::zeros({18, 100, 100, 100, 4}, options);
-	if (!options.device().is_cuda()) {
+	potential = at::zeros({18, 100, 100, 100, 4}, OPTIONS);
+	if (!OPTIONS.device().is_cuda()) {
 		return;
 	}
 	auto potential_ptr = reinterpret_cast<float4*>(potential.data_ptr<float>());
@@ -380,7 +380,7 @@ void Grid::make_grid(at::Tensor rec_pos, at::Tensor rec_hd, at::Tensor rec_ha,
 		);
 	}
 
-    if (options.device().is_cuda()) {
+    if (OPTIONS.device().is_cuda()) {
         Copy_Potential_To_Texture();
     }
 }

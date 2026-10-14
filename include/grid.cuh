@@ -33,6 +33,7 @@
 #include <vector>
 #include <torch/torch.h>
 #include "bucket.cuh"
+#include "constant.h"
 
 #define THREADS 256
 #define BLOCKS(B) (B + THREADS - 1) / THREADS
@@ -53,7 +54,6 @@ public:
     // Total 18 atom types, need 18 sets of grids to store energy different atoms may experience at same position
     int num_types = 18;
     int num_grids;
-	at::TensorOptions options;
 	at::Tensor base_hd;
 	at::Tensor base_ha;
 	at::Tensor base_hydro;
@@ -63,10 +63,10 @@ public:
 	// Initialize with grid point count per side of restricted search space and cutoff radius for scoring
 	// Since each system and site needs updating, this init only handles basic memory allocation etc.
 	// grid_numbers_in_one_dimension specifies interpolation grid point count in each direction
-	Grid(int grid_numbers_in_one_dimemsion_, float cutoff_, at::TensorOptions options_ = {});
+	Grid(int grid_numbers_in_one_dimemsion_, float cutoff_);
 
 	~Grid() {
-		if (!options.device().is_cuda()) {
+		if (!OPTIONS.device().is_cuda()) {
 			return;
 		}
 		for (auto& tex : texObj_potential) {

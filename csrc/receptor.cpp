@@ -55,8 +55,8 @@ inline bool is_pocket_residue(OpenBabel::OBResidue* resi, const double* grid, in
 	return false;
 }
 
-Receptor::Receptor(OpenBabel::OBMol* rec, at::Tensor ref_pos, bool is_vina, float cutoff, at::TensorOptions options_)
-	: options(options_) {
+Receptor::Receptor(OpenBabel::OBMol* rec, at::Tensor ref_pos, bool only_vina, float cutoff) {
+	rec->AddHydrogens(true);
 	if (ref_pos.dtype() != at::kDouble) {
 		ref_pos = ref_pos.to(at::kDouble);
 	}
@@ -74,9 +74,12 @@ Receptor::Receptor(OpenBabel::OBMol* rec, at::Tensor ref_pos, bool is_vina, floa
 		auto* resi = *iter;
 		if (is_pocket_residue(resi, grid, num_points, cutoff2)) {
 			pocket_residues.push_back(resi);
-		    num_atoms += resi->GetNumAtoms();
+			FOR_ATOMS_OF_RESIDUE(atom, *resi) {
+				if (atom->GetAtomicNum() > 1) {
+					++num_atoms;
+				}
+			}
 		}
-		
 	}
 
 	num_res = static_cast<int>(pocket_residues.size());
@@ -96,13 +99,15 @@ Receptor::Receptor(OpenBabel::OBMol* rec, at::Tensor ref_pos, bool is_vina, floa
 	for (int res_i = 0; res_i < num_res; res_i++) {
 		auto* res = pocket_residues[res_i];
 		FOR_ATOMS_OF_RESIDUE(atom, *res) {
+			if (atom->GetAtomicNum() <= 1) {
+				continue;
+			}
 			idx[atom_i] = res_i;
-			const float vdw_val = OpenBabel::OBElements::GetVdwRad(atom->GetAtomicNum());
+
             const bool is_hd = OpenBabel::IsHbondDonor(*atom);
-			const bool is_ha = atom->IsHbondAcceptor();
+			const bool is_ha = OpenBabel::IsHbondAcceptor(*atom);
 			const bool is_hydro = OpenBabel::IsHydrophobic(*atom);
             
-			vdw[atom_i] = vdw_val;
 			hd[atom_i] = is_hd;
 			ha[atom_i] = is_ha;
 			hydro[atom_i] = is_hydro;
@@ -111,28 +116,33 @@ Receptor::Receptor(OpenBabel::OBMol* rec, at::Tensor ref_pos, bool is_vina, floa
 			coords[atom_i][0] = static_cast<float>(c[0]);
 			coords[atom_i][1] = static_cast<float>(c[1]);
 			coords[atom_i][2] = static_cast<float>(c[2]);
-			if (is_vina) {
-				atomic[atom_i] = OpenBabel::atom2type(*atom, is_hydro, is_hd, is_ha);
+			if (only_vina) {
+				auto atom_type = OpenBabel::atom2type(*atom, is_hydro, is_ha, is_hd);
+				vdw[atom_i] = VINA_VDW.at(atom_type);
+				atomic[atom_i] = atom_type;
+			} else {
+				vdw[atom_i] = OpenBabel::OBElements::GetVdwRad(atom->GetAtomicNum());
 			}
 			atom_i++;
 		}
 	}
 
-	pos = coords.to(options);
-	vdw = vdw.to(options);
-	idx = idx.to(options.device());
-	hd = hd.to(options.device());
-	ha = ha.to(options.device());
-	hydro = hydro.to(options.device());
-	atomic = atomic.to(options.device());
-	ptr = torch::_convert_indices_from_coo_to_csr(idx.cpu(), num_res).to(at::kInt).to(options.device());
-
-	graph = Feature::pdb_to_graph(rec, pocket_residues);
-	graph.to(options);
+	pos = coords.to(OPTIONS);
+	vdw = vdw.to(OPTIONS);
+	idx = idx.to(OPTIONS.device());
+	hd = hd.to(OPTIONS.device());
+	ha = ha.to(OPTIONS.device());
+	hydro = hydro.to(OPTIONS.device());
+	atomic = atomic.to(OPTIONS.device());
+	ptr = torch::_convert_indices_from_coo_to_csr(idx.cpu(), num_res).to(at::kInt).to(OPTIONS.device());
+	if (!only_vina) {
+		rec->DeleteHydrogens();
+		graph = Feature::pdb_to_graph(rec, pocket_residues);
+		graph.to(OPTIONS);
+	}
 }
 
-void Receptor::to(at::TensorOptions options_) {
-	options = options_;
+void Receptor::to(at::TensorOptions options) {
 	graph.to(options);
 	vdw = vdw.to(options);
 	idx = idx.to(options.device());

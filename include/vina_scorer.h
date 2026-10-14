@@ -45,16 +45,12 @@ public:
     at::Tensor inter_vdw;
 
     at::Tensor lig_vdw;
-    at::Tensor lig_hd;
-    at::Tensor lig_ha;
     at::Tensor lig_hydro;
     at::Tensor lig_atom;
 
 public:
-    VinaScorer() = default;
-    
-    VinaScorer(torch::TensorOptions options_ = {}, float cutoff_ = 8, float beta_ = 0.838718)
-        : Scorer(options_, cutoff_, beta_) {
+    VinaScorer(float cutoff_ = 8, float beta_ = 0.838718, float omega_ = VINA_OMEGA)
+        : Scorer(cutoff_, beta_, omega_) {
     }
 
     virtual ~VinaScorer() = default;

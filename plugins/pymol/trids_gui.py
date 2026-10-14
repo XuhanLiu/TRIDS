@@ -984,7 +984,10 @@ Examples:
             ligand=lig_path,
             use_vina=bool(int(use_vina)),
         )
-        _print(f"TRIDS> Score = {score:.4f}")
+        if isinstance(score, (list, tuple)):
+            _print("TRIDS> " + ", ".join(f"Score = {float(s):.4f}" for s in score))
+            return score
+        _print(f"TRIDS> Score = {float(score):.4f}")
         return float(score)
 
     except Exception:

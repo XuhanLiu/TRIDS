@@ -38,22 +38,27 @@
 #include "mdn.h"
 #include "receptor.h"
 
-class Scorer {
+class Scorer {    
 public:
-    torch::TensorOptions options;
     at::Tensor inner_nbr;
+    int num_heavy_atoms = -1;
+    int num_h_atoms = -1;
     Receptor* rec;
     float cutoff;
     float cutoff2;
     float beta;
-    int num_tors;
+    float omega;
+    float num_tors;
+    at::Tensor lig_hd;
+    at::Tensor lig_ha;
 
-    Scorer(torch::TensorOptions options_ = {}, float cutoff_ = 8, float beta_ = 1)
-        : cutoff(cutoff_), cutoff2(cutoff_ * cutoff_), options(options_), beta(beta_) {
+    Scorer(float cutoff_ = 8, float beta_ = 1, float omega_ = 0)
+        : cutoff(cutoff_), cutoff2(cutoff_ * cutoff_), beta(beta_), omega(omega_) {
     }
 
-    Scorer() = default;
     ~Scorer() = default;
+
+    virtual void count_atoms(OpenBabel::OBMol* lig);
 
     virtual at::Tensor get_neighbors(OpenBabel::OBMol* lig);
 
@@ -92,16 +97,11 @@ public:
     at::Tensor data;
     
     at::Tensor lig_vdw;
-    at::Tensor lig_ha;
-    at::Tensor lig_hd;
-    at::Tensor lig_hydro;
     
-
     TriScorer() = default;
     
-    TriScorer(TriScore model_, torch::TensorOptions options_ = {}, 
-              float cutoff_ = 10, float beta_ = 0.69314718 / 10): 
-        Scorer(options_, cutoff_, beta_), model(model_) {
+    TriScorer(TriScore model_, float cutoff_ = 10, float beta_ = 0.69314718 / 10, float omega_ = TRIDS_OMEGA): 
+        Scorer(cutoff_, beta_, omega_), model(model_) {
     }
 
     virtual void make_grid();

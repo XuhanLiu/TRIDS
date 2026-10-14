@@ -154,36 +154,31 @@ __host__ __device__ inline void accurate_rtm_compute(
 					local_score.y -= temp;
 					frc_abs -= TRIDS_CLASH_WEIGHT * rij_inv;
 				}
-
+				
 				const int gi_base = atom_i * (num_gauss * num_resis) + resi_i * num_gauss;
-				float score_mdn = 0.f;
-				float frc_mdn = 0.f;
-
-#ifdef __CUDA_ARCH__
-#pragma unroll 10
-#endif
-				for (int gauss_i = 0; gauss_i < num_gauss; gauss_i++) {
-					const int gi = gi_base + gauss_i;
-					const float mu_val = mu[gi];
-					const float var_val = var[gi];
-					const float rho_val = rho[gi];
-					const float diff = rij - mu_val;
-					temp = expf(-diff * diff * var_val * 0.5f + rho_val);
-					score_mdn -= temp;
-					frc_mdn += temp * diff * var_val;
-				}
-				local_score.x += score_mdn;
-
 				if (rij_hb2 < TRIDS_HBOND_MAX2 && TRIDS_HBOND_WEIGHT > 0) {
 					rij = sqrtf(rij_hb2);
 					const float diff = rij - TRIDS_HBOND_AVG;
 					temp = expf(-TRIDS_HBOND_SIGMA2_INV * diff * diff * 0.5f) * TRIDS_HBOND_WEIGHT;
 					local_score.y -= temp;
+					local_score.x -= temp;
 					const float frc_hbond = TRIDS_HBOND_SIGMA2_INV * diff * temp;
 					apply_force(local_grad, dr_hb, -frc_hbond);
 				} else {
-					local_score.y += score_mdn;
-					frc_abs += frc_mdn;
+					#ifdef __CUDA_ARCH__
+					#pragma unroll 10
+					#endif
+					for (int gauss_i = 0; gauss_i < num_gauss; gauss_i++) {
+						const int gi = gi_base + gauss_i;
+						const float mu_val = mu[gi];
+						const float var_val = var[gi];
+						const float rho_val = rho[gi];
+						const float diff = rij - mu_val;
+						temp = expf(-diff * diff * var_val * 0.5f + rho_val);
+						local_score.x -= temp;
+						local_score.y -= temp;
+						frc_abs += temp * diff * var_val;
+					}
 				}
 			}
 			frc_abs *= -rij_inv;
@@ -214,7 +209,7 @@ __host__ __device__ inline void accurate_rtm_compute(
 			rij_inv = rsqrtf(rij2);
 			temp = TRIDS_CLASH_WEIGHT * logf(rij2 / clash2) * 0.5f;
 			if (atom_j > atom_i) {
-				local_score.x -= temp;
+				// local_score.x -= temp;
 				local_score.y -= temp;
 			}
 			float frc = TRIDS_CLASH_WEIGHT * rij_inv;

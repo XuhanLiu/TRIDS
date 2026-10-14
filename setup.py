@@ -101,14 +101,6 @@ def _resolve_artifact_root(directory: Path) -> Path:
     return None
 
 
-def _artifacts_complete(directory: Path) -> bool:
-    return _resolve_artifact_root(directory) is not None
-
-
-def _artifact_dir(directory: Path) -> Path:
-    return _resolve_artifact_root(directory) or directory
-
-
 def _find_file(directory: Path, names: Union[str, Tuple[str, ...]]) -> Path:
     if isinstance(names, str):
         names = (names,)
@@ -146,19 +138,19 @@ def find_prebuilt_bin_dir(source_dir: Path) -> Path:
         return None
 
     prebuilt = platform / f"cu{match.group(1)}{match.group(2)}"
-    if not prebuilt.is_dir() or not _artifacts_complete(prebuilt):
+    if not prebuilt.is_dir():
         return None
-    return prebuilt
+    return _resolve_artifact_root(prebuilt)
 
 
-def _find_core_module(prebuilt: Path, build_dir: Path) -> Path:
+def _find_core_module(build_dir: Path, prebuilt: Path) -> Path:
+    if build_dir.exists():
+        return next(build_dir.rglob(f"_core*{CORE_EXT}"), None)
     if prebuilt is not None:
         for search_dir in _artifact_search_dirs(prebuilt):
             found = next(search_dir.glob(f"_core*{CORE_EXT}"), None)
             if found is not None:
                 return found
-    if build_dir.exists():
-        return next(build_dir.rglob(f"_core*{CORE_EXT}"), None)
     return None
 
 
@@ -194,7 +186,7 @@ def _create_launcher(wrapper: Path, real_binary: Path, lib_dest: Path) -> None:
 def install_lib_to_env(source_dir: Path, artifact_dir: Path) -> list[str]:
     lib_source = source_dir / "lib"
     lib_dest = get_lib_install_dir()
-    artifact_dir = _artifact_dir(artifact_dir)
+    artifact_dir = _resolve_artifact_root(artifact_dir) or artifact_dir
     print(f"Installing lib files to {lib_dest}")
     print(f"  Native artifacts from {artifact_dir}")
 
@@ -213,7 +205,7 @@ def install_lib_to_env(source_dir: Path, artifact_dir: Path) -> list[str]:
 
 
 def install_bin_to_env(artifact_dir: Path) -> list[str]:
-    artifact_dir = _artifact_dir(artifact_dir)
+    artifact_dir = _resolve_artifact_root(artifact_dir) or artifact_dir
     exe_name = "trids.exe" if IS_WINDOWS else "trids"
     trids_exe = _find_file(artifact_dir, exe_name)
     if trids_exe is None:
@@ -521,7 +513,7 @@ def build_cpp_extension(source_dir: Path, build_dir: Path, force_rebuild: bool =
 def ensure_cpp_extension_built(force_rebuild: bool = False) -> bool:
     prebuilt = find_prebuilt_bin_dir(SOURCE_DIR)
     build_dir = get_build_dir(SOURCE_DIR)
-    existing_module = _find_core_module(prebuilt, build_dir)
+    existing_module = _find_core_module(build_dir, prebuilt)
 
     need_build = force_rebuild or existing_module is None
     if not need_build:
@@ -561,23 +553,18 @@ def ensure_trids_assets_installed() -> list[str]:
         _trids_asset_outputs = []
         return _trids_asset_outputs
 
-    artifact_dir = find_prebuilt_bin_dir(SOURCE_DIR)
+    artifact_dir = _resolve_artifact_root(get_build_dir(SOURCE_DIR))
     if artifact_dir is not None:
-        print(f"Using prebuilt artifacts from {artifact_dir}")
-    elif not ensure_cpp_extension_built():
-        _trids_asset_outputs = []
-        return _trids_asset_outputs
+        print(f"Using compiled artifacts from {artifact_dir}")
     else:
-        artifact_dir = _artifact_dir(get_build_dir(SOURCE_DIR))
-
-    if not _artifacts_complete(artifact_dir):
-        print(f"Error: Incomplete TRIDS artifacts in {artifact_dir}")
-        if IS_WINDOWS:
-            print("Expected under build/ or bin/windows/cuXXX/: trids.exe, trids.dll, _core*.pyd")
+        artifact_dir = find_prebuilt_bin_dir(SOURCE_DIR)
+        if artifact_dir is not None:
+            print(f"Using prebuilt artifacts from {artifact_dir}")
+        elif not ensure_cpp_extension_built():
+            _trids_asset_outputs = []
+            return _trids_asset_outputs
         else:
-            print("Expected under build/ or bin/linux/cuXXX/: trids, libtrids.so, _core*.so")
-        _trids_asset_outputs = []
-        return _trids_asset_outputs
+            artifact_dir = _resolve_artifact_root(get_build_dir(SOURCE_DIR))
 
     _trids_asset_outputs = install_all_assets(SOURCE_DIR, artifact_dir)
     return _trids_asset_outputs

@@ -45,23 +45,22 @@ void VinaScorer::set_ligand(OpenBabel::OBMol* lig) {
     lig_atom = torch::empty({ lig->NumAtoms() }, torch::kInt);
     FOR_ATOMS_OF_MOL(atom, lig) {
         int id = atom->GetIndex();
-        float vdw = OpenBabel::OBElements::GetVdwRad(atom->GetAtomicNum());
-        lig_vdw[id] = vdw;
         bool is_hd = OpenBabel::IsHbondDonor(*atom);
-        bool is_ha = atom->IsHbondAcceptor();
+        bool is_ha = OpenBabel::IsHbondAcceptor(*atom);
         bool is_hydro = OpenBabel::IsHydrophobic(*atom);
         lig_hydro[id] = is_hydro;   
         lig_hd[id] = is_hd;
         lig_ha[id] = is_ha;
-        lig_atom[id] = OpenBabel::atom2type(*atom, is_hydro, is_hd, is_ha);
+        auto atom_type = OpenBabel::atom2type(*atom, is_hydro, is_ha, is_hd);
+        lig_vdw[id] = VINA_VDW.at(atom_type);
+        lig_atom[id] = atom_type;
     }
-
-    lig_vdw = lig_vdw.to(options);
-    lig_vdw = lig_vdw.to(options.device());
-    lig_ha = lig_ha.to(options.device());
-    lig_hd = lig_hd.to(options.device());
-    lig_atom = lig_atom.to(options.device());
-    lig_hydro = lig_hydro.to(options.device());
+    lig->DeleteHydrogens();
+    lig_vdw = lig_vdw.to(OPTIONS);
+    lig_ha = lig_ha.to(OPTIONS.device());
+    lig_hd = lig_hd.to(OPTIONS.device());
+    lig_atom = lig_atom.to(OPTIONS.device());    
+    lig_hydro = lig_hydro.to(OPTIONS.device());
 }
 
 void VinaScorer::profiling() {
@@ -77,7 +76,7 @@ void VinaScorer::profiling() {
 void VinaScorer::make_grid() {
     Bucket bucket({ 400.f, 400.f, 400.f }, cutoff, 2.f);
     bucket.put_atom_into_bucket(rec->pos);
-    rec->grid = std::make_unique<Grid>(100, cutoff, options);
+    rec->grid = std::make_unique<Grid>(100, cutoff);
     rec->grid->make_grid(rec->pos, rec->hd, rec->ha, rec->hydro, rec->vdw, rec->box_min, bucket);
 }
 
@@ -109,17 +108,9 @@ at::Tensor VinaScorer::calc_energy(at::Tensor dist, at::Tensor hydro_mask, at::T
     return total_score;
 }
 
-at::Tensor VinaScorer::scoring(at::Tensor lig_pos) {
-    auto dist0 = torch::cdist(lig_pos, rec->pos);
-    auto dist = dist0 - inter_vdw;
-    // std::cout << torch::nonzero(dist != dist) << std::endl;
-    auto inter_score = calc_energy(dist, inter_hydro, inter_hbond) * (dist0 < cutoff);
-    
-    // dist0 = torch::cdist(lig_pos, lig_pos);
-    // dist = dist0 - inner_vdw;
-    // auto inner_score = calc_energy(dist, inner_hydro, inner_hbond) * inner_nbr * (dist0 < cutoff);
-    // return inner_score.sum() + inter_score.sum();
-    return inter_score.sum();
+at::Tensor VinaScorer::scoring(at::Tensor pos) {
+    pos = pos.unsqueeze(0);
+    return VinaAccurateScoring::apply(pos, this).squeeze(0)[0];
 }
 
 at::Tensor VinaScorer::batched_auto_scoring(at::Tensor lig_pos) {
@@ -148,8 +139,7 @@ at::Tensor VinaScorer::loss(at::Tensor lig_pos) {
     return batched_auto_scoring(lig_pos);
 }
 
-void VinaScorer::to(torch::TensorOptions options_) {
-    options = options_;
+void VinaScorer::to(torch::TensorOptions options) {
     inner_nbr = inner_nbr.to(options.device());
     inner_hydro = inner_hydro.to(options.device());
     inner_hbond = inner_hbond.to(options.device());

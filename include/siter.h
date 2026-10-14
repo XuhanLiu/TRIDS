@@ -42,21 +42,17 @@ public:
 
 	int64_t num_clusters = 0;
 
-	torch::TensorOptions options;
-
-	Siter(torch::TensorOptions options_ = {}, float cutoff_ = 10) : cutoff(cutoff_), options(options_) {}
-
-	Siter() = default;
+	Siter(float cutoff_ = 10) : cutoff(cutoff_) {}
 
 	virtual ~Siter();
 
 	virtual at::Tensor points(int current) = 0;
 
-	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool is_vina = false) = 0;
+	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool only_vina = false) = 0;
 
 	virtual std::tuple<at::Tensor, at::Tensor> get_box(at::Tensor points);
 
-	virtual void init(OpenBabel::OBMol* rec, bool is_vina = false);
+	virtual void init(OpenBabel::OBMol* rec, bool only_vina = false);
 };
 
 
@@ -64,8 +60,8 @@ class RefSiter : public Siter {
 	std::vector<OpenBabel::OBMol*> refs;
 
 public:
-	RefSiter(const std::vector<OpenBabel::OBMol*>& refs_, torch::TensorOptions options_ = {}, float cutoff_ = 8)
-		: Siter(options_, cutoff_), refs(refs_) {
+	RefSiter(const std::vector<OpenBabel::OBMol*>& refs_, float cutoff_ = 8)
+		: Siter(cutoff_), refs(refs_) {
 		num_clusters = refs_.size();
 	}
 
@@ -73,7 +69,7 @@ public:
 
 	virtual at::Tensor points(int current);
 
-	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool is_vina = false);
+	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool only_vina = false);
 };
 
 class GridSiter : public Siter {
@@ -84,16 +80,16 @@ public:
 
 	std::vector<torch::Tensor>cluster;
 
-	GridSiter(torch::TensorOptions options_ = {}, float cutoff_ = 8) : Siter(options_, cutoff_) {}
+	GridSiter(float cutoff_ = 8) : Siter(cutoff_) {}
 
-	GridSiter(std::vector<torch::Tensor>cluster_, torch::TensorOptions options_ = {}, float cutoff_ = 8)
-		: Siter(options_, cutoff_), cluster(cluster_) {
+	GridSiter(std::vector<torch::Tensor>cluster_, float cutoff_ = 8)
+		: Siter(cutoff_), cluster(cluster_) {
 		num_clusters = cluster.size();
 	}
 
 	virtual at::Tensor points(int current);
 
-	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool is_vina = false);
+	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool only_vina = false);
 };
 
 
@@ -104,7 +100,7 @@ class ModelSiter : public GridSiter {
 
 public:
 
-	ModelSiter(torch::jit::Module model_, OpenBabel::OBMol* rec, torch::TensorOptions options_ = {}, float cutoff_ = 8);
+	ModelSiter(torch::jit::Module model_, OpenBabel::OBMol* rec, float cutoff_ = 8);
 
 	at::Tensor make_grid(at::Tensor coords, at::Tensor features);
 
@@ -112,5 +108,5 @@ public:
 
 	virtual at::Tensor points(int current);
 
-	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool is_vina = false);
+	virtual Receptor* extract(OpenBabel::OBMol* rec, at::Tensor points, bool only_vina = false);
 };

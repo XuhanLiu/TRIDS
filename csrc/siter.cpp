@@ -49,13 +49,13 @@ Siter::~Siter() {
 std::tuple<at::Tensor, at::Tensor> Siter::get_box(at::Tensor points) {
 	auto box_min = std::get<0>(points.min(0)) - 2;
 	auto box_max = std::get<0>(points.max(0)) + 2;
-	return {box_min.to(options), box_max.to(options) };
+	return {box_min.to(OPTIONS), box_max.to(OPTIONS) };
 }
 
-void Siter::init(OpenBabel::OBMol* rec, bool is_vina) {
+void Siter::init(OpenBabel::OBMol* rec, bool only_vina) {
 	for (auto current = 0; current < num_clusters; current++) {
 		auto ref_pos = this->points(current);
-		auto receptor = this->extract(rec, ref_pos, is_vina);
+		auto receptor = this->extract(rec, ref_pos, only_vina);
 		if (receptor->num_res < 3) {
 			delete receptor;
 			spdlog::warn("Extract binding pocket {} fail", current);
@@ -79,14 +79,14 @@ at::Tensor RefSiter::points(int current) {
 	return pos;
 }
 
-Receptor* RefSiter::extract(OpenBabel::OBMol* rec, at::Tensor pos, bool is_vina) {
+Receptor* RefSiter::extract(OpenBabel::OBMol* rec, at::Tensor pos, bool only_vina) {
 	if (pos.dtype() != at::kDouble) {
 		pos = pos.to(at::kDouble);
 	}
 	if (!pos.is_contiguous()) {
 		pos = pos.contiguous();
 	}
-	return new Receptor(rec, pos, is_vina, cutoff, options);
+	return new Receptor(rec, pos, only_vina, cutoff);
 }
 
 at::Tensor GridSiter::points(int current) {
@@ -94,18 +94,18 @@ at::Tensor GridSiter::points(int current) {
 	return pos;
 }
 
-Receptor* GridSiter::extract(OpenBabel::OBMol* rec, at::Tensor pos, bool is_vina) {
+Receptor* GridSiter::extract(OpenBabel::OBMol* rec, at::Tensor pos, bool only_vina) {
 	if (pos.dtype() != at::kDouble) {
 		pos = pos.to(at::kDouble);
 	}
 	if (!pos.is_contiguous()) {
 		pos = pos.contiguous();
 	}
-	return new Receptor(rec, pos, is_vina, cutoff, options);
+	return new Receptor(rec, pos, only_vina, cutoff);
 }
 
-ModelSiter::ModelSiter(torch::jit::Module model_, OpenBabel::OBMol* rec, torch::TensorOptions options_, float cutoff_)
-	: GridSiter(options_, cutoff_), model(model_) {
+ModelSiter::ModelSiter(torch::jit::Module model_, OpenBabel::OBMol* rec, float cutoff_)
+	: GridSiter(cutoff_), model(model_) {
 	
 	std::vector<float> pos_list;
 	std::vector<float> feat_list;
@@ -167,7 +167,7 @@ ModelSiter::ModelSiter(torch::jit::Module model_, OpenBabel::OBMol* rec, torch::
 	auto features = torch::from_blob(feat_list.data(), {i, 18}).clone();
 	auto centroid = pos.mean(0);
 	pos -= centroid;
-	auto grid_feat = make_grid(pos, features).to(options);
+	auto grid_feat = make_grid(pos, features).to(OPTIONS);
 
 	auto grid = model.forward({ grid_feat }).toTensor();
 
@@ -305,6 +305,6 @@ at::Tensor ModelSiter::points(int current) {
 	return pos;
 }
 
-Receptor* ModelSiter::extract(OpenBabel::OBMol* rec, at::Tensor pos, bool is_vina) {
-	return GridSiter::extract(rec, pos, is_vina);
+Receptor* ModelSiter::extract(OpenBabel::OBMol* rec, at::Tensor pos, bool only_vina) {
+	return GridSiter::extract(rec, pos, only_vina);
 }

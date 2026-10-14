@@ -40,7 +40,6 @@
 #include "scorer.h"
 #include "siter.h"
 #include "vina_scorer.h"
-#include "error.h"
 #include "engine.h"
 #include "constant.h"
 #include "cluster.h"
@@ -193,20 +192,13 @@ Thank you!\n";
         spdlog::info("CUDA support: {}", torch::cuda::is_available() ? "Yes" : "No");
         spdlog::info("CUDNN support: {}", torch::cuda::cudnn_is_available() ? "Yes" : "No");
 
-        if (seed < 0) {
-            seed = auto_seed();
-        }
-        RNG rng = RNG(seed);
-        torch::manual_seed(seed);
+        set_seed(seed);
 
         auto dev_id = cuda < 0 ? "cpu" : "cuda:" + to_string(cuda);
-        if (cuda >= 0) {
-            cudaSetDevice(cuda);
-        }
         torch::set_num_threads(cpu);
         torch::InferenceMode(true);
         torch::jit::setGraphExecutorOptimize(false);
-        auto options = torch::TensorOptions().device(dev_id).dtype(torch::kFloat);
+        OPTIONS = at::TensorOptions().device(dev_id).dtype(at::kFloat);
 
         OpenBabel::OBConversion conv;
         OpenBabel::OBMol* lig = new OpenBabel::OBMol();
@@ -220,8 +212,7 @@ Thank you!\n";
         conv.SetOutFormat("sdf");
 
         conv.ReadFile(rec, rec_path); // Note: rec should not be nullptr;
-        
-        rec->DeleteHydrogens();
+
         if (is_vina) {
             for (auto it = rec->EndResidues() - 1; it >= rec->BeginResidues(); it--) {
                 auto res = *it;
@@ -240,14 +231,14 @@ Thank you!\n";
         auto ref_suffex = std::filesystem::path(ref_path).extension().string();
         if (ref_suffex == ".pt" && (!score_only)) {
             spdlog::info("Determing binding pocket with AI model ...");
-            auto site_model = torch::jit::load(ref_path, options.device());
+            auto site_model = torch::jit::load(ref_path, OPTIONS.device());
             site_model.eval();
-            siter = std::make_shared<ModelSiter>(site_model, rec, options);
+            siter = std::make_shared<ModelSiter>(site_model, rec);
         } else if (ref_suffex == ".dat") {
             spdlog::info("Determing binding pocket with the profile ...");
             std::vector<torch::Tensor> clusters;
             torch::load(clusters, ref_path);
-            siter = std::make_shared<GridSiter>(clusters, options);
+            siter = std::make_shared<GridSiter>(clusters);
         } else {
             spdlog::info("Parsing reference ligand for determining bingding pocket: {}", ref_path);
             suffix = ref_path.substr(ref_path.find_last_of('.') + 1);
@@ -265,10 +256,11 @@ Thank you!\n";
                 ref = new OpenBabel::OBMol();
                 has_ref = conv.Read(ref);
             }
-            siter = std::make_shared<RefSiter>(refs, options);
+            siter = std::make_shared<RefSiter>(refs);
         }
 
-        siter->init(rec, is_vina); 
+        const bool only_vina = is_vina && !(is_hts && !score_only);
+        siter->init(rec, only_vina); 
 
         duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
         spdlog::info("Construct binding site model end ({:.4f}s)", duration);
@@ -278,8 +270,7 @@ Thank you!\n";
         shared_ptr<Scorer> scorer, screener;
         
         // Load TriScore unless Vina-only (vina without HTS, including score_only).
-        const bool load_model = !is_vina || (is_hts && !score_only);
-        if (load_model) {
+        if (!only_vina) {
             start = clock();
             spdlog::info("Construct Pytorch JIT-based scorer begin ...");
             
@@ -289,22 +280,22 @@ Thank you!\n";
             auto rec_model = GraphTransformer(41, 5);
             auto model = TriScore(lig_model, rec_model);
             // Load weights directly to target device (avoid CPU->GPU copy overhead)
-            torch::load(model, model_path, options.device());
+            torch::load(model, model_path, OPTIONS.device());
             model->eval();
 
             duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
             spdlog::info("Construct Pytorch JIT-based scorer end ({:.4f}s)", duration);
-            screener = std::make_shared<TriScorer>(model, options);
+            screener = std::make_shared<TriScorer>(model);
             if (is_vina) {
                 spdlog::info("Construct Vina scorer begin ...");
-                scorer = std::make_shared<VinaScorer>(options);
+                scorer = std::make_shared<VinaScorer>();
             } else {
                 scorer = screener;
             }
         } else {
             start = clock();
             spdlog::info("Construct Vina scorer begin ...");
-            scorer = std::make_shared<VinaScorer>(options);
+            scorer = std::make_shared<VinaScorer>();
             screener = scorer;
             duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
             spdlog::info("Construct Vina scorer end ({:.4f}s)", duration);
@@ -324,7 +315,7 @@ Thank you!\n";
         spdlog::info("Parsing input ligand file end ({:.4f}s)", duration);
         std::shared_ptr<Engine> engine;
 
-        engine = std::make_shared<Engine>(scorer, num_tasks, max_depth, topn, options);
+        engine = std::make_shared<Engine>(scorer, num_tasks, max_depth, topn);
         stringstream out;
         int i = 0;
         while (has_mol) {
@@ -339,7 +330,6 @@ Thank you!\n";
             spdlog::info("Docking Ligand {} begin ...", title);
             start = clock();
             spdlog::info("Scoring function receives ligand begin ...");
-            lig->DeleteHydrogens();
 
             engine->scorer->set_ligand(lig);
             duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
@@ -352,7 +342,7 @@ Thank you!\n";
                 
                 auto lig_pos = torch::from_blob(lig->GetCoordinates(), { lig->NumAtoms(), 3 }, torch::kDouble).clone();
                 if (refs.empty()) {
-                    auto pocket = new Receptor(rec, lig_pos, is_vina, siter->cutoff, options);
+                    auto pocket = new Receptor(rec, lig_pos, only_vina, siter->cutoff);
                     auto [box_min, box_max] = siter->get_box(lig_pos);
                     pocket->box_min = box_min;
                     pocket->box_max = box_max;
@@ -368,7 +358,7 @@ Thank you!\n";
                 duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
                 spdlog::info("Extract binding pocket end ({:.4f}s)", duration);
                 
-                auto score = engine->scoring(lig_pos.to(options)).item<float>();
+                auto score = engine->scoring(lig_pos.to(OPTIONS)).item<float>();
                 out << title << "\t" << score << std::endl;
                 //out << title << "\t" << score << "\t" << scorer->num_tors << "\t" << siter->pockets[0]->num_res << std::endl;
                 duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
@@ -390,14 +380,14 @@ Thank you!\n";
                     
                     start = clock();
                     spdlog::info("Initiating sampling function begin ...");
-                    auto conformer = std::make_shared<Conformer>(lig, num_tasks, options);
+                    auto conformer = std::make_shared<Conformer>(lig, num_tasks);
 
                     duration = static_cast<float>(clock() - start) / CLOCKS_PER_SEC;
                     spdlog::info("Initiating sampling function end ({:.4f}s)", duration);
 
                     start = clock();
                     spdlog::info("Sampling the best conformation begin ...");
-                    auto best_out = engine->docking(*conformer, rng);
+                    auto best_out = engine->docking(*conformer);
                     auto [best_coord, best_score] = best_out;
                     if (screener != scorer) {
                         at::NoGradGuard guard;

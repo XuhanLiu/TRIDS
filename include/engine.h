@@ -44,7 +44,6 @@
 class Engine {
 public:
     std::shared_ptr<Scorer> scorer;
-    torch::TensorOptions options;
     int num_tasks;
     int max_depth;
     float topn;
@@ -53,19 +52,19 @@ public:
     Engine() = default;
 
     Engine(std::shared_ptr<Scorer> scorer_, int num_tasks_ = 512, 
-           int max_depth_ = 32, int topn_ = 10, torch::TensorOptions options_ = {})
-        : scorer(scorer_), num_tasks(num_tasks_), max_depth(max_depth_), topn(topn_), options(options_) {
-        curr_score = torch::empty({ num_tasks, 2 }, options);
+           int max_depth_ = 32, int topn_ = 10)
+        : scorer(scorer_), num_tasks(num_tasks_), max_depth(max_depth_), topn(topn_) {
+        curr_score = at::empty({ num_tasks, 2 }, OPTIONS);
     }
 
     void refine_structures(Conformer& conformer, Dofs& dofs, torch::optim::Optimizer& optimizer);
 
     at::Tensor metropolis_accept(at::Tensor curr_score, at::Tensor prev_score,
-                                 float beta, RNG& rng);
+                                 float beta);
 
     void add_result_to_accepted_list(list<Result>& results, Result& result);
 
     at::Tensor scoring(at::Tensor lig_pos);
 
-    std::tuple<torch::Tensor, torch::Tensor> docking(Conformer& conformer, RNG& rng);
+    std::tuple<torch::Tensor, torch::Tensor> docking(Conformer& conformer);
 };

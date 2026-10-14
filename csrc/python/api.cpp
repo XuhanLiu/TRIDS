@@ -30,13 +30,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <torch/extension.h>
-#include <openbabel/obconversion.h>
 #include <openbabel/mol.h>
-#include <openbabel/atom.h>
-#include <openbabel/obiter.h>
-#include <openbabel/builder.h>
 
-#include <filesystem>
+#include <cstdint>
 
 #include "scorer.h"
 #include "vina_scorer.h"
@@ -53,7 +49,7 @@ namespace py = pybind11;
 
 
 torch::TensorOptions make_options(const std::string& device) {
-    return torch::TensorOptions().device(device).dtype(torch::kFloat);
+    return at::TensorOptions().device(device).dtype(torch::kFloat);
 }
 
 std::vector<std::shared_ptr<Receptor>> take_pockets(Siter& siter) {
@@ -66,53 +62,24 @@ std::vector<std::shared_ptr<Receptor>> take_pockets(Siter& siter) {
     return results;
 }
 
-OpenBabel::OBMol* load_molecule(const std::string& path) {
-    OpenBabel::OBConversion conv;
-    auto suffix = std::filesystem::path(path).extension().string();
-    if (!suffix.empty() && suffix[0] == '.') {
-        suffix = suffix.substr(1);
+OpenBabel::OBMol* mol_from_ptr(std::uintptr_t ptr) {
+    if (ptr == 0) {
+        throw std::runtime_error("Null molecule pointer");
     }
-    conv.SetInFormat(suffix.c_str());
-
-    auto mol = new OpenBabel::OBMol();
-    if (!conv.ReadFile(mol, path)) {
-        delete mol;
-        throw std::runtime_error("Failed to load molecule from: " + path);
-    }
-    return mol;
-}
-
-OpenBabel::OBMol* mol_from_smiles(const std::string& smiles, bool gen_3d) {
-    OpenBabel::OBConversion conv;
-    conv.SetInFormat("smi");
-
-    auto mol = new OpenBabel::OBMol();
-    if (!conv.ReadString(mol, smiles)) {
-        delete mol;
-        throw std::runtime_error("Failed to parse SMILES: " + smiles);
-    }
-
-    if (gen_3d) {
-        OpenBabel::OBBuilder builder;
-        if (!builder.Build(*mol)) {
-            delete mol;
-            throw std::runtime_error("Could not initiate the coordinate of the input ligand!");
-        }
-    }
-    return mol;
+    return reinterpret_cast<OpenBabel::OBMol*>(ptr);
 }
 
 std::shared_ptr<Receptor> make_pocket(
     OpenBabel::OBMol* receptor,
     torch::Tensor ref_coords,
     float radius,
-    bool is_vina,
+    bool only_vina,
     const std::string& device
 ) {
-    auto options = make_options(device);
-    RefSiter siter({}, options, radius);
+    OPTIONS = make_options(device);
+    RefSiter siter({}, radius);
     auto pos = ref_coords.to(torch::kDouble).cpu().contiguous();
-    auto* raw = siter.extract(receptor, pos, is_vina);
+    auto* raw = siter.extract(receptor, pos, only_vina);
     if (raw->num_res < 3) {
         delete raw;
         throw std::runtime_error("Failed to extract binding pocket");
@@ -125,17 +92,50 @@ std::vector<std::shared_ptr<Receptor>> predict_pockets(
     OpenBabel::OBMol* receptor,
     const std::string& model_path,
     float cutoff,
-    bool is_vina,
+    bool only_vina,
     const std::string& device
 ) {
-    auto options = make_options(device);
-    auto site_model = torch::jit::load(model_path, options.device());
+    OPTIONS = make_options(device);
+    auto site_model = torch::jit::load(model_path, OPTIONS.device());
     site_model.eval();
-    ModelSiter model_siter(site_model, receptor, options, cutoff);
-    model_siter.init(receptor, is_vina);
+    ModelSiter model_siter(site_model, receptor, cutoff);
+    model_siter.init(receptor, only_vina);
     return take_pockets(model_siter);
 }
 
+std::vector<std::shared_ptr<Receptor>> load_pockets(
+    OpenBabel::OBMol* receptor,
+    const std::string& path,
+    float cutoff,
+    bool only_vina,
+    const std::string& device
+) {
+    OPTIONS = make_options(device);
+    std::vector<torch::Tensor> clusters;
+    torch::load(clusters, path);
+    GridSiter siter(clusters, cutoff);
+    siter.init(receptor, only_vina);
+    return take_pockets(siter);
+}
+
+std::pair<std::vector<torch::Tensor>, torch::Tensor> cluster_poses(
+    torch::Tensor coords,
+    torch::Tensor scores,
+    float rmsd,
+    int top_n
+) {
+    Cluster cluster;
+    cluster.sort_structures(coords, scores, rmsd, top_n);
+    std::vector<torch::Tensor> coords_list;
+    coords_list.reserve(cluster.selected_numbers);
+    for (int i = 0; i < cluster.selected_numbers; i++) {
+        coords_list.push_back(cluster.selected_coord[i].clone());
+    }
+    return {
+        coords_list,
+        cluster.selected_score.slice(0, 0, cluster.selected_numbers).clone()
+    };
+}
 
 PYBIND11_MODULE(_core, m) {
     m.doc() = "TRIDS: Deep Learning-based Molecular Docking - C++ Core Module";
@@ -144,6 +144,9 @@ PYBIND11_MODULE(_core, m) {
           R"doc(Set C++ log verbosity. 0=error, 1=warn, 2=info. Default is 0.)doc");
     m.def("get_verbose", &OpenBabel::get_verbose,
           R"doc(Return current C++ log verbosity level.)doc");
+    m.def("set_seed", &set_seed, py::arg("seed"));
+    m.def("cluster_poses", &cluster_poses,
+          py::arg("coords"), py::arg("scores"), py::arg("rmsd") = 0.5f, py::arg("top_n"));
     OpenBabel::set_verbose(0);
 
     py::class_<Graph>(m, "_Graph")
@@ -151,60 +154,24 @@ PYBIND11_MODULE(_core, m) {
         .def_readonly("edge_feats", &Graph::edge_feats)
         .def_readonly("edge_index", &Graph::edge_index);
 
-    py::class_<OpenBabel::OBMol>(m, "_OBMol")
-        .def_static("load", &load_molecule, py::return_value_policy::take_ownership)
-        .def_static("from_smiles", &mol_from_smiles,
-                    py::return_value_policy::take_ownership,
-                    py::arg("smiles"), py::arg("gen_3d") = true)
-        .def_property_readonly("num_atoms",
-            [](OpenBabel::OBMol* mol) { return mol->NumAtoms(); })
-        .def_property_readonly("num_bonds",
-            [](OpenBabel::OBMol* mol) { return mol->NumBonds(); })
-        .def_property_readonly("num_residues",
-            [](OpenBabel::OBMol* mol) { return mol->NumResidues(); })
-        .def_property("title",
-            [](OpenBabel::OBMol* mol) { return std::string(mol->GetTitle()); },
-            [](OpenBabel::OBMol* mol, const std::string& title) {
-                std::string copy = title;
-                mol->SetTitle(copy);
-            })
-        .def_property("coordinates",
-            [](OpenBabel::OBMol* mol) {
-                auto coords = torch::empty({mol->NumAtoms(), 3}, torch::kFloat);
-                auto accessor = coords.accessor<float, 2>();
-                FOR_ATOMS_OF_MOL(atom, mol) {
-                    int idx = atom->GetIndex();
-                    accessor[idx][0] = atom->x();
-                    accessor[idx][1] = atom->y();
-                    accessor[idx][2] = atom->z();
-                }
-                return coords;
-            },
-            [](OpenBabel::OBMol* mol, torch::Tensor coords) {
-                auto cpu_coords = coords.cpu();
-                auto accessor = cpu_coords.accessor<float, 2>();
-                FOR_ATOMS_OF_MOL(atom, mol) {
-                    int idx = atom->GetIndex();
-                    atom->SetVector(accessor[idx][0], accessor[idx][1], accessor[idx][2]);
-                }
-            })
-        .def("copy", [](OpenBabel::OBMol* mol) {
-            return new OpenBabel::OBMol(*mol);
-        }, py::return_value_policy::take_ownership)
-        .def("write", [](OpenBabel::OBMol* mol, const std::string& path, const std::string& format) {
-            OpenBabel::OBConversion conv;
-            conv.SetOutFormat(format.c_str());
-            std::ofstream ofs(path);
-            conv.Write(mol, &ofs);
-        }, py::arg("path"), py::arg("format"))
-        .def("delete_hydrogens", [](OpenBabel::OBMol* mol) { mol->DeleteHydrogens(); })
-        .def("to_graph", [](OpenBabel::OBMol* mol) { return Feature::obmol_to_graph(mol); })
-        .def("extract_pocket", &make_pocket,
-             py::arg("ref_coords"), py::arg("radius") = TRIDS_POCKET_CUTOFF,
-             py::arg("is_vina") = false, py::arg("device") = "cuda:0")
-        .def("predict_pockets", &predict_pockets,
-             py::arg("model_path"), py::arg("cutoff") = TRIDS_POCKET_CUTOFF,
-             py::arg("is_vina") = false, py::arg("device") = "cuda:0");
+    m.def("mol_to_graph", [](std::uintptr_t mol) {
+        return Feature::obmol_to_graph(mol_from_ptr(mol));
+    }, py::arg("mol"));
+    m.def("extract_pocket", [](std::uintptr_t mol, torch::Tensor ref_coords, float radius,
+                               bool only_vina, const std::string& device) {
+        return make_pocket(mol_from_ptr(mol), ref_coords, radius, only_vina, device);
+    }, py::arg("mol"), py::arg("ref_coords"), py::arg("radius") = TRIDS_POCKET_CUTOFF,
+       py::arg("only_vina") = false, py::arg("device") = "cuda:0");
+    m.def("predict_pockets", [](std::uintptr_t mol, const std::string& model_path, float cutoff,
+                                bool only_vina, const std::string& device) {
+        return predict_pockets(mol_from_ptr(mol), model_path, cutoff, only_vina, device);
+    }, py::arg("mol"), py::arg("model_path"), py::arg("cutoff") = TRIDS_POCKET_CUTOFF,
+       py::arg("only_vina") = false, py::arg("device") = "cuda:0");
+    m.def("load_pockets", [](std::uintptr_t mol, const std::string& path, float cutoff,
+                             bool only_vina, const std::string& device) {
+        return load_pockets(mol_from_ptr(mol), path, cutoff, only_vina, device);
+    }, py::arg("mol"), py::arg("path"), py::arg("cutoff") = TRIDS_POCKET_CUTOFF,
+       py::arg("only_vina") = false, py::arg("device") = "cuda:0");
 
     py::class_<Receptor, std::shared_ptr<Receptor>>(m, "_Receptor")
         .def_readonly("box_min", &Receptor::box_min)
@@ -216,7 +183,7 @@ PYBIND11_MODULE(_core, m) {
         .def_property_readonly("center",
             [](const Receptor& rec) { return (rec.box_min + rec.box_max) / 2; })
         .def("set_box", [](std::shared_ptr<Receptor> receptor, torch::Tensor ref_coords) {
-            RefSiter siter({}, receptor->options);
+            RefSiter siter({});
             auto pos = ref_coords.to(torch::kDouble).cpu().contiguous();
             std::tie(receptor->box_min, receptor->box_max) = siter.get_box(pos);
         })
@@ -227,65 +194,64 @@ PYBIND11_MODULE(_core, m) {
 
     py::class_<Scorer, std::shared_ptr<Scorer>>(m, "_Scorer")
         .def("set_pocket", [](std::shared_ptr<Scorer> scorer, std::shared_ptr<Receptor> receptor) {
-            receptor->to(scorer->options);
+            receptor->to(OPTIONS);
             scorer->set_pocket(*receptor);
         })
-        .def("set_ligand", &Scorer::set_ligand)
+        .def("set_ligand", [](std::shared_ptr<Scorer> scorer, std::uintptr_t mol) {
+            scorer->set_ligand(mol_from_ptr(mol));
+        }, py::arg("mol"))
         .def("profile", &Scorer::profiling)
         .def("score", [](std::shared_ptr<Scorer> scorer, torch::Tensor coords) {
             at::NoGradGuard guard;
-            return scorer->scoring(coords.to(scorer->options))
-                / (1 + scorer->num_tors * TRIDS_OMEGA);
+            return scorer->scoring(coords.to(OPTIONS))
+                / (1 + scorer->num_tors * scorer->omega);
         });
 
     py::class_<TriScorer, Scorer, std::shared_ptr<TriScorer>>(m, "_TriScorer")
         .def(py::init([](const std::string& model_path, const std::string& device,
                          float cutoff, float beta) {
-            auto options = make_options(device);
+            OPTIONS = make_options(device);
             auto model = TriScore(GraphTransformer(42, 9), GraphTransformer(41, 5));
             model->eval();
-            torch::load(model, model_path, options.device());
-            return std::make_shared<TriScorer>(model, options, cutoff, beta);
+            torch::load(model, model_path, OPTIONS.device());
+            return std::make_shared<TriScorer>(model, cutoff, beta);
         }), py::arg("model_path"), py::arg("device") = "cuda:0",
            py::arg("cutoff") = 10.0f, py::arg("beta") = 0.069314718f);
 
     py::class_<VinaScorer, Scorer, std::shared_ptr<VinaScorer>>(m, "_VinaScorer")
         .def(py::init([](const std::string& device, float cutoff, float beta) {
-            return std::make_shared<VinaScorer>(make_options(device), cutoff, beta);
+            OPTIONS = make_options(device);
+            return std::make_shared<VinaScorer>(cutoff, beta);
         }), py::arg("device") = "cuda:0", py::arg("cutoff") = 8.0f,
-           py::arg("beta") = 0.069314718f);
+           py::arg("beta") = 0.838718f);
 
     py::class_<Conformer, std::shared_ptr<Conformer>>(m, "_Conformer")
-        .def(py::init([](OpenBabel::OBMol* ligand, int streams, const std::string& device) {
-            return std::make_shared<Conformer>(ligand, streams, make_options(device));
+        .def(py::init([](std::uintptr_t ligand, int streams, const std::string& device) {
+            OPTIONS = make_options(device);
+            return std::make_shared<Conformer>(mol_from_ptr(ligand), streams);
         }), py::arg("ligand"), py::arg("streams"), py::arg("device") = "cuda:0");
 
     py::class_<Engine>(m, "_Engine")
         .def(py::init([](std::shared_ptr<Scorer> scorer,
                          int streams, int depth, int top_n, const std::string& device) {
-            return Engine(scorer, streams, depth, top_n, make_options(device));
+            OPTIONS = make_options(device);
+            return Engine(scorer, streams, depth, top_n);
         }), py::arg("scorer"),
-           py::arg("streams") = 256, py::arg("depth") = 32,
+           py::arg("streams") = 1024, py::arg("depth") = 8,
            py::arg("top_n") = 1, py::arg("device") = "cuda:0")
         .def("scoring", &Engine::scoring)
-        .def("docking", [](Engine& engine, std::shared_ptr<Conformer> conformer) {
-            RNG rng(auto_seed());
+        .def("docking", [](Engine& engine, std::shared_ptr<Conformer> conformer,
+                          std::shared_ptr<Scorer> screener) {
             torch::Tensor best_coords;
             torch::Tensor best_scores;
             {
                 py::gil_scoped_release release;
-                std::tie(best_coords, best_scores) = engine.docking(*conformer, rng);
+                std::tie(best_coords, best_scores) = engine.docking(*conformer);
+                if (screener) {
+                    at::NoGradGuard guard;
+                    best_scores = screener->batched_auto_scoring(best_coords.to(OPTIONS));
+                }
             }
-            Cluster cluster;
-            cluster.sort_structures(best_coords, best_scores, 0.5f, static_cast<int>(engine.topn));
-            std::vector<torch::Tensor> coords_list;
-            coords_list.reserve(cluster.selected_numbers);
-            for (int i = 0; i < cluster.selected_numbers; i++) {
-                coords_list.push_back(cluster.selected_coord[i].clone());
-            }
-            return std::make_pair(
-                coords_list,
-                cluster.selected_score.slice(0, 0, cluster.selected_numbers).clone()
-            );
-        }, py::arg("conformer"));
+            return std::make_pair(best_coords, best_scores);
+        }, py::arg("conformer"), py::arg("screener") = nullptr);
 }

@@ -33,7 +33,6 @@
 #include <openbabel/bond.h>
 #include <openbabel/mol.h>
 #include <openbabel/builder.h>
-#include "rand.h"
 
 
 class Dof {
@@ -61,13 +60,13 @@ public:
 
     void init(at::Tensor box_min, at::Tensor box_max, unsigned num_tors);
 
-    void mutate(at::Tensor box_min, at::Tensor box_max, float amplitude, RNG& rng);
+    void mutate(at::Tensor box_min, at::Tensor box_max, float amplitude);
 
-    void mutate_trans(at::Tensor box_min, at::Tensor box_max, float amplitude, RNG& rng);
+    void mutate_trans(at::Tensor box_min, at::Tensor box_max, float amplitude);
 
-    void mutate_rots(float amplitude, RNG& rng);
+    void mutate_rots(float amplitude);
 
-    void mutate_tors(int which, RNG& rng);
+    void mutate_tors(int which);
 
 };
 
@@ -83,7 +82,7 @@ public:
 
     void init(at::Tensor box_min, at::Tensor box_max, unsigned batch_size_, unsigned num_tors);
 
-    void mutate(at::Tensor box_min, at::Tensor box_max, RNG& rng);
+    void mutate(at::Tensor box_min, at::Tensor box_max);
 
     Dofs clone();
 
@@ -104,12 +103,9 @@ public:
 
     std::vector<torch::Tensor> tor_masks;
 
-    // float amplitude = 2;
-    torch::TensorOptions options;
-
     Conformer() = default;
 
-    Conformer(OpenBabel::OBMol* lig, int num_tasks, torch::TensorOptions options_);
+    Conformer(OpenBabel::OBMol* lig, int num_tasks);
 
     inline float gyration_radius();
 

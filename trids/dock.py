@@ -33,7 +33,7 @@ from typing import Optional, Union, List
 from dataclasses import dataclass
 import torch
 from .molecule import Molecule, Pocket
-from .scorer import TriScorer, VinaScorer
+from .scorer import BaseScorer, TriScorer, VinaScorer
 from .utils import get_device
 from . import _core, require_core
 
@@ -50,14 +50,44 @@ class DockingResult:
         return f"DockingResult(rank={self.rank}, score={self.score:.2f}{rmsd_str})"
 
 
+def cluster_poses(
+    coords: torch.Tensor,
+    scores: torch.Tensor,
+    top_n: int,
+    rmsd: float = 0.5,
+):
+    require_core()
+    return _core.cluster_poses(coords, scores, rmsd, top_n)
+
+
+def poses_from_cluster(
+    ligand: Molecule,
+    coords: torch.Tensor,
+    scores: torch.Tensor,
+    top_n: int,
+    rmsd: float = 0.5,
+) -> List[DockingResult]:
+    coords_list, selected = cluster_poses(coords, scores, top_n, rmsd)
+    if isinstance(selected, torch.Tensor):
+        selected = selected.detach().cpu().tolist()
+    title = ligand.title or "TRIDS"
+    results = []
+    for i, (pose, score) in enumerate(zip(coords_list, selected)):
+        mol = ligand.copy()
+        mol.coordinates = pose
+        mol.title = f"{title}_Model_{i + 1}"
+        results.append(DockingResult(molecule=mol, score=float(score), rank=i + 1))
+    return results
+
+
 class Engine:
     """Molecular docking engine."""
 
     def __init__(
         self,
         scorer: Union[TriScorer, VinaScorer],
-        streams: int = 256,
-        depth: int = 32,
+        streams: int = 1024,
+        depth: int = 8,
         top_n: int = 1,
     ):
         require_core()
@@ -70,37 +100,43 @@ class Engine:
             scorer._scorer, streams, depth, top_n, device
         )
 
+    def docking(
+        self,
+        ligand: Molecule,
+        pocket: Pocket,
+        screener: Optional[BaseScorer] = None,
+        ligand_ready: bool = False,
+    ):
+        """Dock one pocket and return every stream's best pose."""
+        self.scorer.set_pocket(pocket)
+        if not ligand_ready:
+            self.scorer.set_ligand(ligand)
+        self.scorer.profile()
+        if screener is not None:
+            screener.set_pocket(pocket)
+            if not ligand_ready:
+                screener.set_ligand(ligand)
+            screener.profile()
+
+        conformer = _core._Conformer(int(ligand._obmol.this), self.streams, get_device())
+        screener_cpp = None if screener is None else screener._scorer
+        return self._engine.docking(conformer, screener_cpp)
+
     def dock(
         self,
         ligand: Molecule,
         pocket: Pocket,
+        screener: Optional[BaseScorer] = None,
     ) -> List[DockingResult]:
-        self.scorer.set_pocket(pocket)
-        self.scorer.set_ligand(ligand)
-        self.scorer.profile()
-
-        conformer = _core._Conformer(ligand._obmol, self.streams, get_device())
-        coords_list, scores = self._engine.docking(conformer)
-
-        if isinstance(scores, torch.Tensor):
-            if scores.dim() == 2:
-                scores = scores[:, 0]
-            scores = scores.detach().cpu().tolist()
-
-        results = []
-        for i, (coords, score) in enumerate(zip(coords_list, scores)):
-            mol = ligand.copy()
-            mol.coordinates = coords
-            mol.title = f"{ligand.title}_pose_{i + 1}"
-            results.append(DockingResult(molecule=mol, score=float(score), rank=i + 1))
-        return results
+        coords, scores = self.docking(ligand, pocket, screener)
+        return poses_from_cluster(ligand, coords, scores, self.top_n)
 
     def dock_batch(
         self,
         ligands: List[Molecule],
         pocket: Pocket,
     ) -> List[List[DockingResult]]:
-        return [self.dock(lig, pocket) for lig in ligands]
+        return [poses_from_cluster(lig, *self.docking(lig, pocket), self.top_n) for lig in ligands]
 
     def __repr__(self) -> str:
         return (

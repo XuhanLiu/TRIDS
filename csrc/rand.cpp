@@ -42,7 +42,10 @@
 
 using namespace std;
 
-float randf(float a, float b, RNG& rng) {
+RNG rng{1};
+at::TensorOptions OPTIONS = at::TensorOptions().dtype(at::kFloat).device(at::kCPU);
+
+float randf(float a, float b) {
 	assert(a < b);
 	uniform_real_distribution<> distr(a, b);
 	float tmp = distr(rng);
@@ -51,13 +54,13 @@ float randf(float a, float b, RNG& rng) {
 	return tmp;
 }
 
-float randn(float mean, float sigma, RNG& rng) {
+float randn(float mean, float sigma) {
 	assert(sigma >= 0);
 	normal_distribution<> distr(mean, sigma);
 	return distr(rng);
 }
 
-int randi(int a, int b, RNG& rng) {
+int randi(int a, int b) {
 	assert(a <= b);
 	uniform_int_distribution<> distr(a, b);
 	int tmp = distr(rng);
@@ -66,11 +69,11 @@ int randi(int a, int b, RNG& rng) {
 	return tmp;
 }
 
-size_t randsz(size_t a, size_t b, RNG& rng) {
+size_t randsz(size_t a, size_t b) {
 	assert(a <= b);
 	assert(int(a) >= 0);
 	assert(int(b) >= 0);
-	int i = randi(int(a), int(b), rng);
+	int i = randi(int(a), int(b));
 	assert(i >= 0);
 	assert(i >= int(a));
 	assert(i <= int(b));
@@ -78,25 +81,36 @@ size_t randsz(size_t a, size_t b, RNG& rng) {
 }
 
 
-at::Tensor rand_sphere(RNG& rng, torch::TensorOptions option) {
+at::Tensor rand_sphere() {
 	while (true) { // on average, this will have to be run about twice
-		float r1 = randf(-1, 1, rng);
-		float r2 = randf(-1, 1, rng);
-		float r3 = randf(-1, 1, rng);
+		float r1 = randf(-1, 1);
+		float r2 = randf(-1, 1);
+		float r3 = randf(-1, 1);
 
-		auto tmp = torch::tensor({ r1, r2, r3 }, option);
+		auto tmp = torch::tensor({ r1, r2, r3 }, OPTIONS);
 		if (tmp.norm().item<float>() < 1)
 			return tmp;
 	}
 }
 
 // expects corner1[i] < corner2[i]
-at::Tensor rand_inbox(torch::Tensor& corner1, torch::Tensor& corner2, RNG& rng) {
+at::Tensor rand_inbox(torch::Tensor& corner1, torch::Tensor& corner2) {
 	at::Tensor tmp = torch::empty({ 3 });
 	for (auto i = 0; (i) < tmp.size(0); i++) {
-		tmp[i] = randf(corner1[i].item<float>(), corner2[i].item<float>(), rng);
+		tmp[i] = randf(corner1[i].item<float>(), corner2[i].item<float>());
 	}
 	return tmp.to(corner1.options());
+}
+
+void set_seed(int seed) {
+	if (seed < 0) {
+		seed = auto_seed();
+	}
+	rng.seed(static_cast<RNG::result_type>(seed));
+	torch::manual_seed(seed);
+	if (torch::cuda::is_available()) {
+		torch::cuda::manual_seed_all(seed);
+	}
 }
 
 

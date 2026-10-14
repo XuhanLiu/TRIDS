@@ -324,8 +324,8 @@ if model_path.exists() and binding_model_path.exists():
             )
             
             # Execute docking
-            trids.utils.set_seed(42)
             start_time = time.time()
+            trids.utils.set_seed(42)
             results2 = engine2.dock(ligand_init, pred_pocket)
             elapsed = time.time() - start_time
             

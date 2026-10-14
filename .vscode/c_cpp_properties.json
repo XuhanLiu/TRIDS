@@ -4,10 +4,10 @@
       "name": "linux-gcc-x64",
       "includePath": [
           "${workspaceFolder}/include/**",
-          "${ENV:HOME}/favorite/miniconda3/envs/trids126/lib/python3.12/site-packages/torch/include",
-          "${ENV:HOME}/favorite/miniconda3/envs/trids126/lib/python3.12/site-packages/torch/include/torch/csrc/api/include",
-          "${ENV:HOME}/favorite/miniconda3/envs/trids126/include",
-          "${ENV:HOME}/favorite/miniconda3/envs/trids126/include/openbabel3"
+          "${ENV:HOME}/favorite/miniconda3/envs/trids/lib/python3.12/site-packages/torch/include",
+          "${ENV:HOME}/favorite/miniconda3/envs/trids/lib/python3.12/site-packages/torch/include/torch/csrc/api/include",
+          "${ENV:HOME}/favorite/miniconda3/envs/trids/include",
+          "${ENV:HOME}/favorite/miniconda3/envs/trids/include/openbabel3"
       ],
       "compilerPath": "/usr/bin/gcc",
       "cStandard": "c17",
